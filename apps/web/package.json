@@ -10,11 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fms-external/plugin-carrier-ratings": "catalog:",
-    "@fms/plugin-dashboard-metrics": "workspace:*",
-    "@fms/plugin-reports": "workspace:*",
+    "@fms-external/plugin-three": "catalog:",
+    "@fms/plugin-one": "workspace:*",
     "@fms/plugin-sdk": "workspace:*",
-    "@fms/plugin-shared": "workspace:*",
+    "@fms/plugin-two": "workspace:*",
     "antd": "catalog:",
     "lucide-react": "catalog:",
     "msw": "catalog:",

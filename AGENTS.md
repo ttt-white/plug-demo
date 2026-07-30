@@ -6,8 +6,9 @@
 
 - `apps/web/`：Vite 宿主应用，包含路由、鉴权、Mock Service Worker 和应用级测试。
 - `packages/plugin-sdk/`：插件协议、类型、校验与排序逻辑。
-- `plugins/shared/`：插件共用 UI 和错误边界。
-- `plugins/dashboard-metrics/` 与 `plugins/reports/`：插槽模块和独立页面插件示例。
+- `plugins/one/`：工作台插槽模块插件示例。
+- `plugins/two/`：履约报表整页插件与公共契约示例。
+- `external/three/`：承运商评级外部插件和跨插件扩展示例，不属于根 workspace。
 - `public/`：根目录静态资源；Web 应用专用资源位于 `apps/web/public/`。
 
 测试文件与被测代码就近放置，命名为 `*.test.ts` 或 `*.test.tsx`。第三方依赖版本统一维护在 `pnpm-workspace.yaml` 的 `catalog` 中，内部包使用 `workspace:*`。

@@ -3,8 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
-      "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
-      "@fms/plugin-shared": ["../shared/src/index.tsx"]
+      "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"]
     }
   },
   "include": ["src"]

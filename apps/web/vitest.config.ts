@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     conditions: ['development'],
-    dedupe: ['react', 'react-dom', 'antd', '@fms/plugin-sdk', '@fms/plugin-shared'],
+    dedupe: ['react', 'react-dom', 'antd', '@fms/plugin-sdk'],
   },
   test: {
     environment: 'jsdom',

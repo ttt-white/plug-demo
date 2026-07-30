@@ -14,7 +14,7 @@ function readEnvFile(path) {
 }
 
 const forwardedArgs = process.argv.slice(2).filter((argument) => argument !== '--');
-const externalRoot = resolve(process.env.FMS_EXTERNAL_PLUGIN_ROOT ?? 'external-repos/fms-plugin-carrier-ratings');
+const externalRoot = resolve(process.env.FMS_EXTERNAL_PLUGIN_ROOT ?? 'external/three');
 const env = { ...readEnvFile(resolve(externalRoot, '.env')), ...process.env };
 const configPath = resolve(externalRoot, env.FMS_DEV_CONFIG ?? 'fms.dev.json');
 const config = JSON.parse(readFileSync(configPath, 'utf8'));

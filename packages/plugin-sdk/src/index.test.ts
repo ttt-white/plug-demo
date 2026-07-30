@@ -1,10 +1,12 @@
 import type { ComponentType } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   PLUGIN_API_VERSION,
+  createPluginChannelBus,
   sortModuleContributions,
   validatePlugins,
   type PluginComponentProps,
+  type PluginChannelReference,
   type WorkspacePlugin,
 } from './index';
 
@@ -49,6 +51,145 @@ describe('validatePlugins', () => {
     first.routes = [{ id: 'first.route', path: '/same', permission: 'same:view', menu: { label: 'Same', order: 1 }, load }];
     second.routes = [{ id: 'second.route', path: '/same', permission: 'same:view', menu: { label: 'Same', order: 2 }, load }];
     expect(validatePlugins([first, second], options).every((registration) => registration.status === 'error')).toBe(true);
+  });
+
+  it('accepts a plugin module and typed route link targeting another plugin', () => {
+    const two = createPlugin('two');
+    two.routes = [{ id: 'two', path: '/reports', permission: 'reports:view', menu: { label: 'two', order: 1 }, load }];
+    two.extensionSlots = [{ id: 'two.summary', routeId: 'two' }];
+
+    const three = createPlugin('three');
+    three.modules = [
+      {
+        id: 'three.summary',
+        targetPluginId: 'two',
+        routeId: 'two',
+        slotId: 'two.summary',
+        load,
+      },
+    ];
+    three.routes = [
+      {
+        id: 'three',
+        path: '/carrier-ratings',
+        permission: 'carrier-ratings:view',
+        menu: { label: 'three', order: 1 },
+        load,
+      },
+    ];
+    three.routeLinks = [
+      {
+        id: 'two.three',
+        parentRoute: { pluginId: 'two', routeId: 'two' },
+        targetRoute: { pluginId: 'three', routeId: 'three' },
+        menu: { label: 'three', order: 1 },
+      },
+    ];
+
+    expect(validatePlugins([two, three], options).every((registration) => registration.status === 'ready')).toBe(true);
+  });
+
+  it('rejects unknown plugin slots and route-link references', () => {
+    const two = createPlugin('two');
+    two.routes = [{ id: 'two', path: '/reports', permission: 'reports:view', menu: { label: 'two', order: 1 }, load }];
+    two.extensionSlots = [{ id: 'two.summary', routeId: 'two' }];
+
+    const three = createPlugin('three');
+    three.modules = [
+      {
+        id: 'three.summary',
+        targetPluginId: 'two',
+        routeId: 'two',
+        slotId: 'two.unknown',
+        load,
+      },
+    ];
+    three.routes = [
+      {
+        id: 'three',
+        path: '/carrier-ratings',
+        permission: 'carrier-ratings:view',
+        menu: { label: 'three', order: 1 },
+        load,
+      },
+    ];
+    three.routeLinks = [
+      {
+        id: 'two.three',
+        parentRoute: { pluginId: 'missing-two', routeId: 'two' },
+        targetRoute: { pluginId: 'three', routeId: 'missing-route' },
+        menu: { label: 'three', order: 1 },
+      },
+    ];
+
+    const result = validatePlugins([two, three], options)[1];
+    expect(result?.status).toBe('error');
+    expect(result?.errors).toEqual([
+      '父路由不存在或不唯一：missing-two/two',
+      '跳转路由不存在或不唯一：three/missing-route',
+      '目标插件未开放插槽：two/two/two.unknown',
+    ]);
+  });
+
+  it('rejects duplicate route-link ids', () => {
+    const two = createPlugin('two');
+    two.routes = [{ id: 'two', path: '/reports', permission: 'reports:view', menu: { label: 'two', order: 1 }, load }];
+    const three = createPlugin('three');
+    three.routes = [
+      {
+        id: 'three',
+        path: '/carrier-ratings',
+        permission: 'carrier-ratings:view',
+        menu: { label: 'three', order: 2 },
+        load,
+      },
+    ];
+    const routeLink = {
+      id: 'two.three',
+      parentRoute: { pluginId: 'two', routeId: 'two' },
+      targetRoute: { pluginId: 'three', routeId: 'three' },
+      menu: { label: 'three', order: 1 },
+    };
+    two.routeLinks = [routeLink];
+    three.routeLinks = [routeLink];
+
+    expect(validatePlugins([two, three], options).every((registration) => registration.status === 'error')).toBe(true);
+  });
+});
+
+describe('createPluginChannelBus', () => {
+  it('delivers messages only to the target plugin and supports unsubscribe', () => {
+    const bus = createPluginChannelBus();
+    const twoListener = vi.fn();
+    const otherListener = vi.fn();
+    const filterCarrier: PluginChannelReference<{ carrier: string }> = {
+      pluginId: 'two',
+      topic: 'two:filter-carrier',
+    };
+    const unsubscribe = bus.forPlugin('two').subscribe(filterCarrier, twoListener);
+    bus.forPlugin('other-plugin').subscribe('two:filter-carrier', otherListener);
+
+    bus.forPlugin('three').publish(filterCarrier, { carrier: '东驰物流' });
+    expect(twoListener).toHaveBeenCalledWith({ carrier: '东驰物流' }, { fromPluginId: 'three' });
+    expect(otherListener).not.toHaveBeenCalled();
+
+    unsubscribe();
+    bus.forPlugin('three').publish(filterCarrier, { carrier: '北辰货运' });
+    expect(twoListener).toHaveBeenCalledOnce();
+  });
+
+  it('isolates a failing channel subscriber', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const bus = createPluginChannelBus();
+    const healthyListener = vi.fn();
+    bus.forPlugin('two').subscribe('refresh', () => {
+      throw new Error('broken subscriber');
+    });
+    bus.forPlugin('two').subscribe('refresh', healthyListener);
+
+    expect(() => bus.forPlugin('three').publish('two', 'refresh', undefined)).not.toThrow();
+    expect(healthyListener).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalledOnce();
   });
 });
 

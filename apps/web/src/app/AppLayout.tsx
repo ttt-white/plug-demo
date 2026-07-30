@@ -1,6 +1,6 @@
 import { useAuth } from '@/auth/AuthProvider';
 import { usePluginRegistry } from '@/plugins/PluginRegistryProvider';
-import { Button, Dropdown, Menu, type MenuProps } from 'antd';
+import { Button, Dropdown, Layout, Menu, type MenuProps } from 'antd';
 import { BadgeCheck, Blocks, Boxes, ChartNoAxesColumn, House, LogOut, Puzzle, UserRound, type LucideIcon } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
@@ -16,13 +16,20 @@ export function AppLayout() {
   const location = useLocation();
   if (!user) return null;
 
+  const currentPluginRoute = routes.find(({ contribution }) => contribution.path === location.pathname);
+
   const signOut = () => {
     logout();
     navigate('/login', { replace: true });
   };
 
   const menuItems: MenuProps['items'] = [
-    { key: '/dashboard', icon: <House aria-hidden="true" size={17} />, label: <Link to="/dashboard">工作台</Link> },
+    {
+      key: '/dashboard',
+      icon: <House aria-hidden="true" size={17} />,
+      label: <Link to="/dashboard">one</Link>,
+      title: 'one：工作台',
+    },
     ...routes
       .filter(({ contribution }) => can(contribution.permission))
       .map(({ plugin, contribution }) => {
@@ -43,48 +50,33 @@ export function AppLayout() {
     {
       key: 'account',
       disabled: true,
-      label: (
-        <div>
-          <strong>{user.displayName}</strong>
-          <div>{user.role === 'admin' ? '管理员' : '查看者'}</div>
-        </div>
-      ),
+      label: `${user.displayName} / ${user.role === 'admin' ? '管理员' : '查看者'}`,
     },
     { type: 'divider' },
     { key: 'logout', danger: true, icon: <LogOut aria-hidden="true" size={16} />, label: '退出登录' },
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="sticky top-0 z-20 bg-white shadow-sm">
-        <div className="mx-auto flex min-h-16 w-full max-w-360 items-center gap-2 px-4 sm:gap-6 sm:px-7">
-          <Link
-            className="inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap text-neutral-950 no-underline"
-            to="/dashboard"
-            aria-label="FMS Workspace 首页"
-          >
-            <span className="grid size-9 place-items-center rounded-md bg-blue-600 text-white">
-              <Boxes aria-hidden="true" size={19} />
-            </span>
-            <span className="hidden text-sm sm:inline">
-              FMS <strong className="text-blue-600">Workspace</strong>
-            </span>
-          </Link>
-
-          <nav className="min-w-0 flex-1" aria-label="主导航">
-            <Menu items={menuItems} mode="horizontal" selectedKeys={[location.pathname]} />
-          </nav>
-
-          <Dropdown menu={{ items: accountItems, onClick: ({ key }) => key === 'logout' && signOut() }} placement="bottomRight">
-            <Button aria-label="账户菜单" icon={<UserRound aria-hidden="true" size={17} />} type="text">
-              <span className="hidden lg:inline">{user.displayName}</span>
-            </Button>
-          </Dropdown>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-310 px-4 py-8 sm:px-7 sm:py-10">
+    <Layout className="min-h-screen! bg-neutral-50!">
+      <Layout.Header className="sticky top-0 z-20 flex h-auto! min-h-16 items-center gap-3 bg-white! px-4! sm:px-6!">
+        <Link className="flex shrink-0 items-center gap-2 whitespace-nowrap font-semibold text-neutral-950" to="/dashboard">
+          <Boxes aria-hidden="true" size={19} />
+          <span className="hidden sm:inline">FMS Workspace</span>
+        </Link>
+        <Menu
+          aria-label="主导航"
+          className="min-w-0 flex-1 border-0!"
+          items={menuItems}
+          mode="horizontal"
+          selectedKeys={[currentPluginRoute?.contribution.path ?? location.pathname]}
+        />
+        <Dropdown menu={{ items: accountItems, onClick: ({ key }) => key === 'logout' && signOut() }} placement="bottomRight">
+          <Button aria-label="账户菜单" icon={<UserRound aria-hidden="true" size={17} />} type="text" />
+        </Dropdown>
+      </Layout.Header>
+      <Layout.Content className="mx-auto w-full max-w-300 px-4 py-6 sm:px-6">
         <Outlet />
-      </main>
-    </div>
+      </Layout.Content>
+    </Layout>
   );
 }

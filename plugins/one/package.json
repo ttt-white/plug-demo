@@ -1,5 +1,5 @@
 {
-  "name": "@fms/plugin-dashboard-metrics",
+  "name": "@fms/plugin-one",
   "version": "1.0.0",
   "private": false,
   "files": [
@@ -15,12 +15,11 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-sdk --external @fms/plugin-shared --external lucide-react && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-sdk --external lucide-react && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@fms/plugin-shared": "workspace:*",
     "lucide-react": "catalog:"
   },
   "devDependencies": {

@@ -1,33 +1,39 @@
 {
-  "name": "@fms/plugin-shared",
+  "name": "@fms/plugin-two",
   "version": "1.0.0",
   "private": false,
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "type": "module",
   "exports": {
     ".": {
-      "development": "./src/index.tsx",
+      "development": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsup src/index.tsx --format esm --clean --external react --external antd --external lucide-react && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-sdk --external lucide-react && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --environment jsdom"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "lucide-react": "catalog:"
   },
   "devDependencies": {
+    "@fms/plugin-sdk": "workspace:*",
     "@types/react": "catalog:",
     "antd": "catalog:",
     "react": "catalog:"
   },
   "peerDependencies": {
+    "@fms/plugin-sdk": "^1.0.0",
     "antd": "^6.0.0",
     "react": "^19.0.0"
+  },
+  "fmsPlugin": {
+    "apiVersion": 1
   }
 }

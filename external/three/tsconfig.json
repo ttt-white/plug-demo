@@ -24,7 +24,7 @@
     "types": ["vitest/globals"],
     "paths": {
       "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
-      "@fms/plugin-shared": ["../../plugins/shared/src/index.tsx"]
+      "@fms/plugin-two": ["../../plugins/two/src/index.ts"]
     }
   },
   "include": ["src"]

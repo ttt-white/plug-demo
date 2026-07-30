@@ -1,7 +1,7 @@
 {
-  "name": "@fms-external/plugin-carrier-ratings",
+  "name": "@fms-external/plugin-three",
   "version": "1.0.0",
-  "description": "FMS Workspace external carrier ratings page plugin",
+  "description": "FMS Workspace external three plugin",
   "license": "MIT",
   "files": [
     "dist",
@@ -22,13 +22,13 @@
   },
   "scripts": {
     "build": "pnpm build:js && pnpm build:css",
-    "build:js": "tsup src/index.ts --format esm --splitting --clean --dts --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-shared --external lucide-react",
+    "build:js": "tsup src/index.ts --format esm --splitting --clean --dts --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-two --external lucide-react",
     "build:css": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --minify",
     "dev": "node scripts/dev.mjs",
     "predev:host": "pnpm build",
     "dev:host": "node scripts/start-host.mjs",
     "dev:watch": "node scripts/dev.mjs --skip-host-check",
-    "dev:js": "tsup src/index.ts --format esm --splitting --dts --watch --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-shared --external lucide-react",
+    "dev:js": "tsup src/index.ts --format esm --splitting --dts --watch --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-two --external lucide-react",
     "dev:css": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --watch",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect src",
@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@fms/plugin-sdk": "link:../../packages/plugin-sdk",
-    "@fms/plugin-shared": "link:../../plugins/shared",
+    "@fms/plugin-two": "link:../../plugins/two",
     "@tailwindcss/cli": "catalog:",
     "@types/react": "catalog:",
     "antd": "catalog:",
@@ -51,7 +51,7 @@
   },
   "peerDependencies": {
     "@fms/plugin-sdk": "^1.0.0",
-    "@fms/plugin-shared": "^1.0.0",
+    "@fms/plugin-two": "^1.0.0",
     "antd": "^6.0.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0"

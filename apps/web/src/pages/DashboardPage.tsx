@@ -1,9 +1,7 @@
 import { PluginSlot } from '@/plugins/PluginRenderer';
 import { apiClient } from '@/services/api-client';
-import { PluginApiError } from '@fms/plugin-sdk';
-import { PluginContainer, type PluginContentState } from '@fms/plugin-shared';
-import { Col, Row, Statistic, Tag, Typography } from 'antd';
-import { AlertTriangle, CheckCircle2, Clock3, Route } from 'lucide-react';
+import { Button, Result, Spin, Typography } from 'antd';
+import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface DashboardSummary {
@@ -13,84 +11,53 @@ interface DashboardSummary {
   metrics: unknown[];
 }
 
-function failureState(error: unknown): PluginContentState<DashboardSummary> {
-  if (error instanceof PluginApiError && error.status === 403) return { status: 'forbidden' };
-  return { status: 'error', error };
-}
+type ViewState = 'loading' | 'ready' | 'error';
 
 export function DashboardPage() {
-  const [state, setState] = useState<PluginContentState<DashboardSummary>>({ status: 'loading' });
+  const [state, setState] = useState<ViewState>('loading');
 
   const load = useCallback(() => {
-    setState({ status: 'loading' });
+    setState('loading');
     void apiClient
       .get<DashboardSummary>('/api/dashboard')
-      .then((data) => setState({ status: 'ready', data }))
-      .catch((error: unknown) => setState(failureState(error)));
+      .then(() => setState('ready'))
+      .catch(() => setState('error'));
   }, []);
 
   useEffect(() => {
     let active = true;
     void apiClient
       .get<DashboardSummary>('/api/dashboard')
-      .then((data) => {
-        if (active) setState({ status: 'ready', data });
+      .then(() => {
+        if (active) setState('ready');
       })
-      .catch((error: unknown) => {
-        if (active) setState(failureState(error));
+      .catch(() => {
+        if (active) setState('error');
       });
     return () => {
       active = false;
     };
   }, []);
 
+  if (state === 'loading') return <Spin description="正在加载工作台" />;
+  if (state === 'error') {
+    return (
+      <Result
+        extra={
+          <Button icon={<RefreshCw aria-hidden="true" size={16} />} onClick={load}>
+            重试
+          </Button>
+        }
+        status="error"
+        title="工作台加载失败"
+      />
+    );
+  }
+
   return (
-    <div className="grid gap-6">
-      <section
-        className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"
-        aria-labelledby="dashboard-title"
-      >
-        <div>
-          <Typography.Text type="secondary">工作区概览</Typography.Text>
-          <Typography.Title id="dashboard-title" level={2}>
-            早上好，运输团队
-          </Typography.Title>
-          <Typography.Paragraph type="secondary">这里是今天需要关注的业务进展。</Typography.Paragraph>
-        </div>
-        <Tag icon={<CheckCircle2 aria-hidden="true" size={15} />} color="success">
-          数据已同步
-        </Tag>
-      </section>
-
-      <PluginContainer state={state} onRetry={load}>
-        {(data) => (
-          <Row gutter={[24, 24]}>
-            <Col xs={24} md={8}>
-              <Statistic
-                prefix={<Route aria-hidden="true" size={20} />}
-                suffix="项"
-                title="进行中任务"
-                value={data.activeTasks}
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <Statistic
-                prefix={<AlertTriangle aria-hidden="true" size={20} />}
-                suffix="条"
-                title="待处理预警"
-                value={data.alerts}
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <Statistic prefix={<Clock3 aria-hidden="true" size={20} />} title="数据更新时间" value={data.updatedAt} />
-            </Col>
-          </Row>
-        )}
-      </PluginContainer>
-
-      <section aria-label="经营指标">
-        <PluginSlot routeId="dashboard" slotId="dashboard.metrics" />
-      </section>
+    <div className="grid gap-4">
+      <Typography.Text>这是宿主的工作台页面，对应菜单 one</Typography.Text>
+      <PluginSlot routeId="dashboard" slotId="dashboard.metrics" />
     </div>
   );
 }

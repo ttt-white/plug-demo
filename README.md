@@ -1,6 +1,6 @@
 # FMS Workspace
 
-FMS Workspace 是一个基于 React 19、Ant Design 6、Tailwind CSS 4、Vite、TypeScript 6 和 pnpm workspace 的前端插件基座。宿主负责登录、RBAC、菜单、路由、API 鉴权与插件生命周期；插件可以贡献一个完整页面，也可以只挂载到某个宿主路由的指定插槽。
+FMS Workspace 是一个基于 React 19、Ant Design 6、Tailwind CSS 4、Vite、TypeScript 6 和 pnpm workspace 的前端插件基座。宿主负责登录、RBAC、菜单、路由、API 鉴权与插件生命周期；插件可以贡献完整页面、宿主路由模块，也可以通过有类型约束的通道、扩展插槽和页面入口扩展其他插件。
 
 插件包结构、开发规范、本机联调和远程联调流程见 [FMS 插件开发与联调规范](docs/plugin-development.md)。
 
@@ -11,14 +11,14 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm install` 会同时安装并构建 `external-repos/fms-plugin-carrier-ratings` 本地外部插件示例。
+`pnpm install` 会同时安装并构建 `external/three` 本地外部插件示例。
 
 开发服务器默认运行在 [http://localhost:3000](http://localhost:3000)。Mock 账号：
 
-| 身份     | 用户名   | 密码        | 权限                                                |
-| -------- | -------- | ----------- | --------------------------------------------------- |
-| 管理员   | `admin`  | `admin123`  | Dashboard、指标模块、履约报表、承运商评级、插件管理 |
-| 普通用户 | `viewer` | `viewer123` | 仅基础 Dashboard                                    |
+| 身份     | 用户名   | 密码        | 权限                                                 |
+| -------- | -------- | ----------- | ---------------------------------------------------- |
+| 管理员   | `admin`  | `admin123`  | one 工作台、two 履约报表、three 承运商评级、插件管理 |
+| 普通用户 | `viewer` | `viewer123` | 仅 one 工作台                                        |
 
 常用检查命令：
 
@@ -34,13 +34,14 @@ pnpm build
 ```text
 apps/web                    宿主应用、路由、鉴权、Mock API
 packages/plugin-sdk         npm 插件协议、运行时类型、注册校验
-plugins/shared              公共 PluginContainer 与错误边界
-plugins/dashboard-metrics   Dashboard 插槽模块示例
-plugins/reports             独立页面插件示例
-external-repos/fms-plugin-carrier-ratings  独立仓库与本机链接示例
+plugins/one                 工作台插槽模块示例
+plugins/two                 履约报表整页插件示例
+external/three              承运商评级外部插件与本机链接示例
 ```
 
 宿主当前公开一个模块插槽：`routeId: dashboard` + `slotId: dashboard.metrics`。新增插槽时需要同时在宿主页渲染 `PluginSlot`，并将插槽加入 `HOST_SLOTS` 白名单。
+
+`plugins/two` 同时演示插件开放扩展插槽；外部 `three` 插件向该插槽贡献模块，并在 two 页面注册一个跳到唯一真实路由 `/carrier-ratings` 的类型化入口。两个插件还通过 `runtime.channel` 传递消息。详细协议见开发规范的“跨插件扩展、页面入口与通信”。
 
 ## 依赖 Catalog
 
@@ -58,7 +59,7 @@ pnpm 10 的 catalog 不支持 `link:` 协议。本机联调时仍在 catalog 中
 
 ## 外部仓库本机联调
 
-仓库内提供了完整示例 [`external-repos/fms-plugin-carrier-ratings`](external-repos/fms-plugin-carrier-ratings/README.md)。首次安装由根脚本自动完成，也可以显式执行：
+仓库内提供了完整示例 [`external/three`](external/three/README.md)。首次安装由根脚本自动完成，也可以显式执行：
 
 ```bash
 pnpm external:setup
@@ -67,10 +68,10 @@ pnpm external:setup
 持续开发时可以直接从外部插件仓库启动：
 
 ```bash
-pnpm --dir external-repos/fms-plugin-carrier-ratings dev:host
+pnpm --dir external/three dev:host
 ```
 
-外部仓库会根据 `fms.dev.json` 中的 `workspaceRoot` 和 `host.url` 启动宿主及插件 watcher；插件源码由宿主 Vite 直接加载并支持 React Fast Refresh。管理员登录后可从顶部菜单进入“承运商评级”，也可在插件中心即时启停。
+外部仓库会根据 `fms.dev.json` 中的 `workspaceRoot` 和 `host.url` 启动宿主及插件 watcher；插件源码由宿主 Vite 直接加载并支持 React Fast Refresh。管理员登录后可从顶部菜单进入 `three`，也可在插件中心即时启停。
 
 外部插件仓库的 `fms.dev.json` 控制宿主地址，例如 `http://localhost:3000`。根 `pnpm dev` 会按该地址启动宿主并等待其 Vite HMR 就绪；将 `host.start` 设为 `false` 可连接已经运行的宿主。
 

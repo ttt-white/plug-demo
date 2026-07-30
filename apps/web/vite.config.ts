@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react(), fmsPluginDiscovery(fileURLToPath(new URL('.', import.meta.url))), tailwindcss()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
-    dedupe: ['react', 'react-dom', 'antd', '@fms/plugin-sdk', '@fms/plugin-shared'],
+    dedupe: ['react', 'react-dom', 'antd', '@fms/plugin-sdk'],
   },
   server: { host: true, port: 3000 },
 });

@@ -44,9 +44,9 @@ importers:
       '@fms/plugin-sdk':
         specifier: link:../../packages/plugin-sdk
         version: link:../../packages/plugin-sdk
-      '@fms/plugin-shared':
-        specifier: link:../../plugins/shared
-        version: link:../../plugins/shared
+      '@fms/plugin-two':
+        specifier: link:../../plugins/two
+        version: link:../../plugins/two
       '@tailwindcss/cli':
         specifier: 'catalog:'
         version: 4.3.3

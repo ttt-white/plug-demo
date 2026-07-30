@@ -11,12 +11,12 @@
     "typecheck": "pnpm external:typecheck && pnpm -r typecheck",
     "test": "pnpm external:test && pnpm -r test",
     "lint": "pnpm external:lint && eslint apps packages plugins && oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect apps packages plugins",
-    "external:install": "pnpm --dir external-repos/fms-plugin-carrier-ratings install",
-    "external:build": "pnpm --dir external-repos/fms-plugin-carrier-ratings build",
-    "external:dev": "pnpm --dir external-repos/fms-plugin-carrier-ratings dev",
-    "external:typecheck": "pnpm --dir external-repos/fms-plugin-carrier-ratings typecheck",
-    "external:test": "pnpm --dir external-repos/fms-plugin-carrier-ratings test",
-    "external:lint": "pnpm --dir external-repos/fms-plugin-carrier-ratings lint",
+    "external:install": "pnpm --dir external/three install",
+    "external:build": "pnpm --dir external/three build",
+    "external:dev": "pnpm --dir external/three dev",
+    "external:typecheck": "pnpm --dir external/three typecheck",
+    "external:test": "pnpm --dir external/three test",
+    "external:lint": "pnpm --dir external/three lint",
     "external:setup": "pnpm external:install && pnpm external:build",
     "commit": "git add . && lefthook run pre-commit && git add . && czg --no-verify"
   },
@@ -54,7 +54,7 @@
   "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "overrides": {
-      "@fms-external/plugin-carrier-ratings": "link:./external-repos/fms-plugin-carrier-ratings"
+      "@fms-external/plugin-three": "link:./external/three"
     }
   }
 }

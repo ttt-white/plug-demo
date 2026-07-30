@@ -6,9 +6,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
-      "@fms/plugin-shared": ["../../plugins/shared/src/index.tsx"],
-      "@fms/plugin-dashboard-metrics": ["../../plugins/dashboard-metrics/src/index.ts"],
-      "@fms/plugin-reports": ["../../plugins/reports/src/index.ts"]
+      "@fms/plugin-one": ["../../plugins/one/src/index.ts"],
+      "@fms/plugin-two": ["../../plugins/two/src/index.ts"]
     }
   },
   "include": ["src", "vite.config.ts", "vitest.config.ts"]

@@ -116,7 +116,7 @@ catalogs:
       version: 4.1.10
 
 overrides:
-  '@fms-external/plugin-carrier-ratings': link:./external-repos/fms-plugin-carrier-ratings
+  '@fms-external/plugin-three': link:./external/three
 
 importers:
 
@@ -200,21 +200,18 @@ importers:
 
   apps/web:
     dependencies:
-      '@fms-external/plugin-carrier-ratings':
-        specifier: link:../../external-repos/fms-plugin-carrier-ratings
-        version: link:../../external-repos/fms-plugin-carrier-ratings
-      '@fms/plugin-dashboard-metrics':
+      '@fms-external/plugin-three':
+        specifier: link:../../external/three
+        version: link:../../external/three
+      '@fms/plugin-one':
         specifier: workspace:*
-        version: link:../../plugins/dashboard-metrics
-      '@fms/plugin-reports':
-        specifier: workspace:*
-        version: link:../../plugins/reports
+        version: link:../../plugins/one
       '@fms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
-      '@fms/plugin-shared':
+      '@fms/plugin-two':
         specifier: workspace:*
-        version: link:../../plugins/shared
+        version: link:../../plugins/two
       antd:
         specifier: 'catalog:'
         version: 6.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -265,11 +262,8 @@ importers:
         specifier: 'catalog:'
         version: 19.2.8
 
-  plugins/dashboard-metrics:
+  plugins/one:
     dependencies:
-      '@fms/plugin-shared':
-        specifier: workspace:*
-        version: link:../shared
       lucide-react:
         specifier: 'catalog:'
         version: 0.468.0(react@19.2.8)
@@ -287,11 +281,8 @@ importers:
         specifier: 'catalog:'
         version: 19.2.8
 
-  plugins/reports:
+  plugins/two:
     dependencies:
-      '@fms/plugin-shared':
-        specifier: workspace:*
-        version: link:../shared
       lucide-react:
         specifier: 'catalog:'
         version: 0.468.0(react@19.2.8)
@@ -299,22 +290,6 @@ importers:
       '@fms/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.17
-      antd:
-        specifier: 'catalog:'
-        version: 6.5.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.8
-
-  plugins/shared:
-    dependencies:
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.468.0(react@19.2.8)
-    devDependencies:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.17

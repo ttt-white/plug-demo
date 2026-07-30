@@ -1,5 +1,8 @@
 import {
+  createPluginChannelBus,
   validatePlugins,
+  type PluginExtensionRoute,
+  type PluginExtensionRuntime,
   type PluginModuleContribution,
   type PluginRegistration,
   type PluginRouteContribution,
@@ -7,6 +10,7 @@ import {
   type WorkspacePlugin,
 } from '@fms/plugin-sdk';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { installedPlugins } from 'virtual:fms-installed-plugins';
 import { useAuth } from '@/auth/AuthProvider';
 import { apiClient } from '@/services/api-client';
@@ -39,8 +43,8 @@ interface PluginRegistryContextValue {
   states: PluginState[];
   loading: boolean;
   routes: ResolvedRoute[];
-  modulesFor(routeId: string, slotId: string): ResolvedModule[];
-  runtime: PluginRuntime | null;
+  modulesFor(routeId: string, slotId: string, targetPluginId?: string): ResolvedModule[];
+  runtimeFor(pluginId: string, renderSlot: PluginExtensionRuntime['renderSlot']): PluginRuntime | null;
   setEnabled(id: string, enabled: boolean): Promise<void>;
 }
 
@@ -50,7 +54,9 @@ const EMPTY_PLUGIN_STATES: PluginState[] = [];
 
 export function PluginRegistryProvider({ children }: { children: ReactNode }) {
   const { user, can } = useAuth();
+  const navigate = useNavigate();
   const [loaded, setLoaded] = useState<LoadedPluginStates | null>(null);
+  const channelBus = useMemo(() => createPluginChannelBus(), []);
 
   useEffect(() => {
     if (!user) return;
@@ -90,7 +96,13 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     [activeRegistrations],
   );
 
-  const runtime = useMemo<PluginRuntime | null>(() => (user ? { api: apiClient, user, can } : null), [can, user]);
+  const routeLinks = useMemo(
+    () =>
+      activeRegistrations.flatMap((registration) =>
+        (registration.plugin.routeLinks ?? []).map((contribution) => ({ plugin: registration.plugin, contribution })),
+      ),
+    [activeRegistrations],
+  );
 
   const value = useMemo<PluginRegistryContextValue>(
     () => ({
@@ -98,26 +110,80 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
       states,
       loading,
       routes,
-      runtime,
-      modulesFor(routeId, slotId) {
+      modulesFor(routeId, slotId, targetPluginId) {
         return activeRegistrations
           .flatMap((registration) =>
             (registration.plugin.modules ?? [])
-              .filter((module) => module.routeId === routeId && module.slotId === slotId)
+              .filter(
+                (module) =>
+                  module.routeId === routeId &&
+                  module.slotId === slotId &&
+                  (module.targetPluginId ?? null) === (targetPluginId ?? null),
+              )
               .map((contribution) => ({ plugin: registration.plugin, contribution })),
           )
           .filter(({ contribution }) => !contribution.permission || can(contribution.permission))
           .sort((left, right) => {
             const priority = (right.contribution.priority ?? 0) - (left.contribution.priority ?? 0);
-            return priority || left.plugin.manifest.id.localeCompare(right.plugin.manifest.id);
+            const plugin = left.plugin.manifest.id.localeCompare(right.plugin.manifest.id);
+            return priority || plugin || left.contribution.id.localeCompare(right.contribution.id);
           });
+      },
+      runtimeFor(pluginId, renderSlot) {
+        if (!user) return null;
+        return {
+          pluginId,
+          api: apiClient,
+          user,
+          can,
+          channel: channelBus.forPlugin(pluginId),
+          extensions: {
+            renderSlot,
+            routesFor(route): PluginExtensionRoute[] {
+              if (route.pluginId !== pluginId) return [];
+              return routeLinks
+                .filter(
+                  ({ contribution }) =>
+                    contribution.parentRoute.pluginId === route.pluginId &&
+                    contribution.parentRoute.routeId === route.routeId &&
+                    (!contribution.permission || can(contribution.permission)),
+                )
+                .flatMap(({ plugin, contribution }) => {
+                  const target = routes.find(
+                    (route) =>
+                      route.plugin.manifest.id === contribution.targetRoute.pluginId &&
+                      route.contribution.id === contribution.targetRoute.routeId,
+                  );
+                  if (!target || !can(target.contribution.permission)) return [];
+                  return [
+                    {
+                      id: contribution.id,
+                      pluginId: plugin.manifest.id,
+                      targetRoute: contribution.targetRoute,
+                      path: target.contribution.path,
+                      label: contribution.menu.label,
+                      ...(contribution.menu.icon ? { icon: contribution.menu.icon } : {}),
+                      order: contribution.menu.order,
+                    },
+                  ];
+                })
+                .sort((left, right) => left.order - right.order || left.pluginId.localeCompare(right.pluginId));
+            },
+            navigateTo(route) {
+              const target = routes.find(
+                ({ plugin, contribution }) => plugin.manifest.id === route.pluginId && contribution.id === route.routeId,
+              );
+              if (target && can(target.contribution.permission)) void navigate(target.contribution.path);
+            },
+          },
+        };
       },
       async setEnabled(id, enabled) {
         const response = await apiClient.patch<{ plugins: PluginState[] }>(`/api/plugins/${id}`, { enabled });
         if (user) setLoaded({ owner: user, states: response.plugins });
       },
     }),
-    [activeRegistrations, can, loading, routes, runtime, states, user],
+    [activeRegistrations, can, channelBus, loading, navigate, routeLinks, routes, states, user],
   );
 
   return <PluginRegistryContext.Provider value={value}>{children}</PluginRegistryContext.Provider>;
