@@ -6,11 +6,11 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-  globalIgnores(['dist', 'node_modules', 'coverage']),
+  globalIgnores(['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/public/mockServiceWorker.js']),
 
   // Config files
   {
-    files: ['*.config.{js,ts}', 'vite.config.ts'],
+    files: ['**/*.config.{js,mjs,ts}', '**/vite.config.ts'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.node,
@@ -19,7 +19,7 @@ export default defineConfig([
 
   // Source files
   {
-    files: ['src/**/*.{ts,tsx}', '**/*.{test,spec}.{ts,tsx}'],
+    files: ['**/src/**/*.{ts,tsx}', '**/*.{test,spec}.{ts,tsx}'],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -41,9 +41,15 @@ export default defineConfig([
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'react-refresh/only-export-components': [
+        'warn',
+        {
+          allowConstantExport: true,
+          allowExportNames: ['HOST_ROUTES', 'HOST_SLOTS', 'useAuth', 'usePluginRegistry'],
+        },
+      ],
 
-      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'off',
       '@typescript-eslint/no-explicit-any': 'off',

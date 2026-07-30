@@ -1,0 +1,33 @@
+{
+  "name": "@fms/plugin-shared",
+  "version": "1.0.0",
+  "private": false,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "development": "./src/index.tsx",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm --clean --external react --external antd --external lucide-react && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --environment jsdom"
+  },
+  "dependencies": {
+    "lucide-react": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "antd": "catalog:",
+    "react": "catalog:"
+  },
+  "peerDependencies": {
+    "antd": "^6.0.0",
+    "react": "^19.0.0"
+  }
+}

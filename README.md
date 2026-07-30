@@ -1,129 +1,121 @@
-# React Web Template
+# FMS Workspace
 
-> 基于 React 19 + TypeScript 5 + Vite + TailwindCSS 4 的现代化前端模板
+FMS Workspace 是一个基于 React 19、Ant Design 6、Tailwind CSS 4、Vite、TypeScript 6 和 pnpm workspace 的前端插件基座。宿主负责登录、RBAC、菜单、路由、API 鉴权与插件生命周期；插件可以贡献一个完整页面，也可以只挂载到某个宿主路由的指定插槽。
 
-## 特性
-
-- ⚡️ **Vite 7** - 极速的开发服务器和构建工具 (使用 rolldown-vite)
-- ⚛️ **React 19** - 最新的 React 版本
-- 📘 **TypeScript 5** - 类型安全
-- 🎨 **TailwindCSS 4** - 原子化 CSS 框架
-- 📦 **es-toolkit** - 现代化的 JavaScript 工具库
-- 🔍 **oxlint + oxfmt** - 基于 Rust 的超快代码检查和格式化工具
-- 🎯 **Lefthook** - Git hooks 自动化管理
-- 💅 **Prettier + Stylelint** - 代码格式化和样式检查
+插件包结构、开发规范、本机联调和远程联调流程见 [FMS 插件开发与联调规范](docs/plugin-development.md)。
 
 ## 快速开始
 
-### 环境要求
-
-- Node.js >= 24.0.0
-- pnpm >= 10.0.0
-
-### 安装依赖
-
 ```bash
 pnpm install
-```
-
-### 开发
-
-```bash
 pnpm dev
 ```
 
-访问 http://localhost:3000
+开发服务器默认运行在 [http://localhost:3000](http://localhost:3000)。Mock 账号：
 
-### 构建
+| 身份     | 用户名   | 密码        | 权限                                    |
+| -------- | -------- | ----------- | --------------------------------------- |
+| 管理员   | `admin`  | `admin123`  | Dashboard、指标模块、履约报表、插件管理 |
+| 普通用户 | `viewer` | `viewer123` | 仅基础 Dashboard                        |
+
+常用检查命令：
 
 ```bash
+pnpm typecheck
+pnpm lint
+pnpm test
 pnpm build
 ```
 
-### 预览生产构建
+## Workspace 结构
+
+```text
+apps/web                    宿主应用、路由、鉴权、Mock API
+packages/plugin-sdk         npm 插件协议、运行时类型、注册校验
+plugins/shared              公共 PluginContainer 与错误边界
+plugins/dashboard-metrics   Dashboard 插槽模块示例
+plugins/reports             独立页面插件示例
+```
+
+宿主当前公开一个模块插槽：`routeId: dashboard` + `slotId: dashboard.metrics`。新增插槽时需要同时在宿主页渲染 `PluginSlot`，并将插槽加入 `HOST_SLOTS` 白名单。
+
+## 依赖 Catalog
+
+第三方依赖版本统一维护在 `pnpm-workspace.yaml` 的 `catalog` 中，各 workspace 包通过 `catalog:` 引用，不在子包重复声明版本。升级公共依赖时只修改 catalog 并运行：
 
 ```bash
-pnpm preview
+pnpm install
+pnpm typecheck
+pnpm test
 ```
 
-### 代码检查
+`workspace:*` 继续用于仓库内部包。可发布插件的 `peerDependencies` 保留显式兼容范围，例如 `react: ^19.0.0`、`antd: ^6.0.0`，不使用 `catalog:`，避免把宿主当前安装版本误当成插件的最小兼容版本。
+
+## 第三方 npm 插件
+
+第三方插件在构建期安装，并作为可信 React 代码与宿主同进程运行。首版不支持浏览器运行时下载插件，也不提供 iframe 隔离。
+
+1. 安装包：
 
 ```bash
-# 运行所有检查
-pnpm lint
-
-# 类型检查
-pnpm tsc --noEmit
+pnpm --filter @fms/web add @vendor/fms-plugin
 ```
 
-## 项目结构
+2. 在 `apps/web/src/plugins/installedPlugins.ts` 静态导入并加入 `installedPlugins`。
 
-```
-web/
-├── .vscode/          # VS Code 配置
-├── public/           # 静态资源
-├── src/
-│   ├── styles/       # 全局样式
-│   ├── App.tsx       # 应用入口组件
-│   └── main.tsx      # 应用入口
-├── index.html        # HTML 模板
-├── vite.config.ts    # Vite 配置
-└── package.json      # 项目配置
-```
+3. Tailwind 插件需要发布预编译 CSS，或在宿主的 Tailwind 入口通过 `@source` 显式扫描插件包的 ESM 文件。本仓库使用 `@source '../../../plugins'` 扫描 workspace 示例插件。
 
-## 可用脚本
+4. 重新启动或构建宿主。管理员可在插件中心启用、停用已打包插件。
 
-| 命令           | 说明           |
-| -------------- | -------------- |
-| `pnpm dev`     | 启动开发服务器 |
-| `pnpm build`   | 构建生产版本   |
-| `pnpm preview` | 预览生产构建   |
-| `pnpm commit`  | 交互式提交     |
+最小插件入口：
 
-## 环境变量
+```ts
+import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@fms/plugin-sdk';
 
-创建 `.env.local` 文件 (参考 `.env.example`):
-
-```bash
-VITE_APP_TITLE=My App
-VITE_API_BASE_URL=http://localhost:8080
+export const plugin: WorkspacePlugin = {
+  manifest: {
+    id: 'vendor-reports',
+    name: '供应商报表',
+    version: '1.0.0',
+    apiVersion: PLUGIN_API_VERSION,
+  },
+  routes: [
+    {
+      id: 'vendor-reports.page',
+      path: '/vendor-reports',
+      permission: 'vendor-reports:view',
+      menu: { label: '供应商报表', order: 40 },
+      load: () => import('./VendorReportsPage'),
+    },
+  ],
+};
 ```
 
-## Git Hooks
+插件组件接收 `runtime`：
 
-项目使用 Lefthook 管理 Git hooks:
+```tsx
+import type { PluginComponentProps } from '@fms/plugin-sdk';
+import { Button } from 'antd';
 
-- **pre-commit**: 代码格式化、lint、类型检查
-- **commit-msg**: 提交信息规范检查
-- **post-merge**: 自动运行 pnpm install
+export default function VendorReportsPage({ runtime }: PluginComponentProps) {
+  const canExport = runtime.can('vendor-reports:export');
+  // runtime.api 会自动携带宿主 Bearer token，并统一处理 401/403。
+  return (
+    <div className="grid gap-4">
+      <Button disabled={!canExport} type="primary">
+        导出报表
+      </Button>
+    </div>
+  );
+}
+```
 
-## 工具链配置
+插件包应将 `react`、`antd` 和 `@fms/plugin-sdk` 声明为 peer dependencies，输出 ESM 与 `.d.ts`。交互组件使用 Ant Design，布局和定制样式使用 Tailwind utility。插件 ID、路由 ID、路由路径和模块 ID 必须唯一；`/login`、`/dashboard`、`/plugins` 为宿主保留路径。无效插件不会注入菜单、路由或模块，错误原因会显示在插件中心。
 
-### TypeScript
+## 鉴权与 Mock
 
-- 严格模式已启用
-- 额外的安全检查: `noUncheckedIndexedAccess`, `noImplicitReturns` 等
-
-### ESLint + oxlint
-
-- oxlint: 快速的基础检查
-- ESLint: React Hooks 和高级规则
-
-### Prettier
-
-- 单引号
-- 尾部逗号
-- 130 字符行宽
-
-### TailwindCSS
-
-- 原子化 CSS
-- 任意值支持
-- 自定义主题
-
-## 浏览器支持
-
-- Chrome (最新)
-- Firefox (最新)
-- Safari (最新)
-- Edge (最新)
+- Bearer token 保存在 `sessionStorage`，关闭标签页后失效。
+- 菜单、路由和模块使用同一套权限码过滤；Mock API 再独立校验 token 和权限。
+- 401 会清理会话并返回登录页，403 只展示无权限状态，不会退出登录。
+- 插件启停状态保存在 Mock 工作区全局数据中，不随账号退出而清除。
+- 设置 `VITE_ENABLE_MOCKS=false` 可关闭 MSW，连接真实后端时保持现有 API Client 接口即可。

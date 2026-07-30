@@ -6,7 +6,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-reports
 
 CODE_CHANGES.md
 
@@ -37,3 +36,4 @@ coverage
 *.sln
 *.sw?
 *.eslintcache
+*.tsbuildinfo
