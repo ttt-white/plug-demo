@@ -1,6 +1,7 @@
-import 'antd/dist/reset.css';
 import '@/styles.css';
 import { App as AntdApp, ConfigProvider } from 'antd';
+import 'antd/dist/reset.css';
+import zhCN from 'antd/locale/zh_CN';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -21,25 +22,7 @@ void startMocks().then(() => {
   createRoot(root).render(
     <StrictMode>
       <BrowserRouter>
-        <ConfigProvider
-          theme={{
-            token: {
-              colorPrimary: '#18794e',
-              colorInfo: '#18794e',
-              colorSuccess: '#18794e',
-              borderRadius: 6,
-              colorBgLayout: '#f3f6f4',
-              colorText: '#1f2a24',
-              fontFamily:
-                "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
-            },
-            components: {
-              Button: { controlHeight: 38 },
-              Card: { headerFontSize: 16 },
-              Menu: { horizontalItemSelectedColor: '#18794e', itemSelectedColor: '#18794e' },
-            },
-          }}
-        >
+        <ConfigProvider locale={zhCN}>
           <AntdApp>
             <AuthProvider>
               <PluginRegistryProvider>

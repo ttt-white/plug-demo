@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.user);
       },
       logout,
-      can: (permission) => user?.permissions.includes(permission) ?? false,
+      can: (permission) => user?.permissions.includes('*') || user?.permissions.includes(permission) || false,
     }),
     [bootstrapping, logout, user],
   );

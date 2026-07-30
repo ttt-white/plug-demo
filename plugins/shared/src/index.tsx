@@ -17,7 +17,6 @@ interface PluginContainerProps<T> {
   state: PluginContentState<T>;
   onRetry?: () => void;
   children(data: T): ReactNode;
-  className?: string;
 }
 
 const stateDefaults = {
@@ -28,27 +27,15 @@ const stateDefaults = {
   offline: '网络连接不可用',
 } as const;
 
-export function PluginContainer<T>({
-  title,
-  description,
-  actions,
-  state,
-  onRetry,
-  children,
-  className,
-}: PluginContainerProps<T>) {
-  const rootClassName = ['w-full min-w-0 overflow-hidden shadow-sm [&_.ant-card-body]:p-0', className].filter(Boolean).join(' ');
-
+export function PluginContainer<T>({ title, description, actions, state, onRetry, children }: PluginContainerProps<T>) {
   const cardTitle =
     title || description ? (
       <div>
-        {title && (
-          <Typography.Title className="m-0! text-base!" level={2}>
-            {title}
-          </Typography.Title>
-        )}
+        {title && <Typography.Text strong>{title}</Typography.Text>}
         {description && (
-          <Typography.Paragraph className="mt-1! mb-0! text-xs! font-normal! text-[#69736e]!">{description}</Typography.Paragraph>
+          <div>
+            <Typography.Text type="secondary">{description}</Typography.Text>
+          </div>
         )}
       </div>
     ) : undefined;
@@ -75,7 +62,6 @@ export function PluginContainer<T>({
     return (
       <div className="min-h-48" role={state.status === 'error' ? 'alert' : 'status'}>
         <Result
-          className="py-8!"
           extra={
             onRetry && (state.status === 'error' || state.status === 'offline') ? (
               <Button icon={<RefreshCw aria-hidden="true" size={16} />} onClick={onRetry}>
@@ -92,7 +78,7 @@ export function PluginContainer<T>({
   })();
 
   return (
-    <Card className={rootClassName} extra={actions} title={cardTitle}>
+    <Card extra={actions} title={cardTitle}>
       {state.status === 'ready' ? <div className="min-w-0">{children(state.data)}</div> : fallback}
     </Card>
   );

@@ -1,6 +1,6 @@
 import { PluginApiError, type PluginComponentProps } from '@fms/plugin-sdk';
 import { PluginContainer, type PluginContentState } from '@fms/plugin-shared';
-import { Statistic, Tag } from 'antd';
+import { Col, Row, Statistic, Tag } from 'antd';
 import { ArrowDownRight, ArrowUpRight, Boxes, CircleDollarSign, Truck } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -57,30 +57,28 @@ export default function MetricsModule({ runtime }: PluginComponentProps) {
       onRetry={loadMetrics}
     >
       {(data) => (
-        <div className="grid divide-y divide-[#edf0ee] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <Row gutter={[24, 24]}>
           {data.metrics.map((metric, index) => {
             const Icon = metricIcons[index] ?? Boxes;
             const ChangeIcon = metric.change >= 0 ? ArrowUpRight : ArrowDownRight;
             return (
-              <article className="flex min-w-0 items-start gap-3.5 px-5.5 py-6" key={metric.id}>
-                <div className="grid size-10 shrink-0 place-items-center rounded-md bg-[#e6f5ee] text-[#197451]">
-                  <Icon aria-hidden="true" size={20} />
-                </div>
-                <div className="min-w-0">
-                  <Statistic styles={{ content: { fontSize: 24 } }} title={metric.label} value={metric.value} />
-                  <Tag
-                    className="mt-1"
-                    color={metric.change >= 0 ? 'success' : 'error'}
-                    icon={<ChangeIcon aria-hidden="true" size={13} />}
-                    variant="filled"
-                  >
-                    {Math.abs(metric.change)}%
-                  </Tag>
-                </div>
-              </article>
+              <Col xs={24} md={8} key={metric.id}>
+                <article className="grid gap-2">
+                  <Statistic prefix={<Icon aria-hidden="true" size={20} />} title={metric.label} value={metric.value} />
+                  <div>
+                    <Tag
+                      color={metric.change >= 0 ? 'success' : 'error'}
+                      icon={<ChangeIcon aria-hidden="true" size={13} />}
+                      variant="filled"
+                    >
+                      {Math.abs(metric.change)}%
+                    </Tag>
+                  </div>
+                </article>
+              </Col>
             );
           })}
-        </div>
+        </Row>
       )}
     </PluginContainer>
   );

@@ -1,11 +1,14 @@
 import { delay, http, HttpResponse } from 'msw';
-import { dashboardData, mockAccounts, readPluginStates, reportsData, writePluginState } from './data';
+import { installedPlugins } from 'virtual:fms-installed-plugins';
+import { carrierRatingsData, dashboardData, mockAccounts, readPluginStates, reportsData, writePluginState } from './data';
+
+const installedPluginIds = installedPlugins.map((plugin) => plugin.manifest.id);
 
 function authenticate(request: Request, permission?: string) {
   const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '');
   const account = Object.values(mockAccounts).find((candidate) => candidate.token === token);
   if (!account) return { error: HttpResponse.json({ message: '登录状态已失效' }, { status: 401 }) };
-  if (permission && !account.user.permissions.includes(permission)) {
+  if (permission && !account.user.permissions.includes('*') && !account.user.permissions.includes(permission)) {
     return { error: HttpResponse.json({ message: '没有执行此操作的权限' }, { status: 403 }) };
   }
   return { user: account.user };
@@ -40,10 +43,16 @@ export const handlers = [
     return auth.error ?? HttpResponse.json(reportsData);
   }),
 
+  http.get('/api/carrier-ratings', async ({ request }) => {
+    await delay(420);
+    const auth = authenticate(request, 'carrier-ratings:view');
+    return auth.error ?? HttpResponse.json(carrierRatingsData);
+  }),
+
   http.get('/api/plugins', async ({ request }) => {
     await delay(180);
     const auth = authenticate(request);
-    return auth.error ?? HttpResponse.json({ plugins: readPluginStates() });
+    return auth.error ?? HttpResponse.json({ plugins: readPluginStates(installedPluginIds) });
   }),
 
   http.patch('/api/plugins/:id', async ({ request, params }) => {
@@ -52,12 +61,12 @@ export const handlers = [
     if (auth.error) return auth.error;
     const id = String(params['id']);
     const body = (await request.json()) as { enabled?: boolean };
-    if (!readPluginStates().some((state) => state.id === id)) {
+    if (!readPluginStates(installedPluginIds).some((state) => state.id === id)) {
       return HttpResponse.json({ message: '插件不存在' }, { status: 404 });
     }
     if (typeof body.enabled !== 'boolean') {
       return HttpResponse.json({ message: 'enabled 必须是布尔值' }, { status: 400 });
     }
-    return HttpResponse.json({ plugins: writePluginState(id, body.enabled) });
+    return HttpResponse.json({ plugins: writePluginState(id, body.enabled, installedPluginIds) });
   }),
 ];

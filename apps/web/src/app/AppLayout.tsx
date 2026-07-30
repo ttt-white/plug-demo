@@ -1,10 +1,11 @@
 import { useAuth } from '@/auth/AuthProvider';
 import { usePluginRegistry } from '@/plugins/PluginRegistryProvider';
-import { Avatar, Button, Layout, Menu, Tooltip, Typography, type MenuProps } from 'antd';
-import { Blocks, Boxes, ChartNoAxesColumn, House, LogOut, Puzzle, type LucideIcon } from 'lucide-react';
+import { Button, Dropdown, Menu, type MenuProps } from 'antd';
+import { BadgeCheck, Blocks, Boxes, ChartNoAxesColumn, House, LogOut, Puzzle, UserRound, type LucideIcon } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 const iconMap: Record<string, LucideIcon> = {
+  'badge-check': BadgeCheck,
   'chart-no-axes-column': ChartNoAxesColumn,
 };
 
@@ -38,54 +39,52 @@ export function AppLayout() {
       : []),
   ];
 
+  const accountItems: MenuProps['items'] = [
+    {
+      key: 'account',
+      disabled: true,
+      label: (
+        <div>
+          <strong>{user.displayName}</strong>
+          <div>{user.role === 'admin' ? '管理员' : '查看者'}</div>
+        </div>
+      ),
+    },
+    { type: 'divider' },
+    { key: 'logout', danger: true, icon: <LogOut aria-hidden="true" size={16} />, label: '退出登录' },
+  ];
+
   return (
-    <Layout className="min-h-screen bg-[#f3f6f4]!">
-      <Layout.Header className="sticky top-0 z-20 h-17.5! border-b border-[#dce3df] bg-white/95! px-0! leading-normal! backdrop-blur-md">
-        <div className="mx-auto grid h-full w-full max-w-360 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:gap-5 sm:px-7">
+    <div className="min-h-screen bg-neutral-50">
+      <header className="sticky top-0 z-20 bg-white shadow-sm">
+        <div className="mx-auto flex min-h-16 w-full max-w-360 items-center gap-2 px-4 sm:gap-6 sm:px-7">
           <Link
-            className="inline-flex items-center gap-2.5 whitespace-nowrap text-[#1b2821] no-underline"
+            className="inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap text-neutral-950 no-underline"
             to="/dashboard"
             aria-label="FMS Workspace 首页"
           >
-            <span className="grid size-9 place-items-center rounded-md bg-[#1c8059] text-white">
+            <span className="grid size-9 place-items-center rounded-md bg-blue-600 text-white">
               <Boxes aria-hidden="true" size={19} />
             </span>
             <span className="hidden text-sm sm:inline">
-              FMS <strong className="text-[#237c58]">Workspace</strong>
+              FMS <strong className="text-blue-600">Workspace</strong>
             </span>
           </Link>
 
-          <Menu
-            aria-label="主菜单"
-            className="min-w-0 border-b-0! bg-transparent!"
-            items={menuItems}
-            mode="horizontal"
-            selectedKeys={[location.pathname]}
-          />
+          <nav className="min-w-0 flex-1" aria-label="主导航">
+            <Menu items={menuItems} mode="horizontal" selectedKeys={[location.pathname]} />
+          </nav>
 
-          <div className="flex items-center gap-2">
-            <Avatar className="shrink-0 bg-[#fee9df]! text-[#a84131]!">{user.displayName.slice(0, 1)}</Avatar>
-            <div className="hidden min-w-16 lg:grid">
-              <Typography.Text className="text-xs! font-semibold!">{user.displayName}</Typography.Text>
-              <Typography.Text className="text-xs! text-[#87918c]!">
-                {user.role === 'admin' ? '管理员' : '查看者'}
-              </Typography.Text>
-            </div>
-            <Tooltip title="退出登录">
-              <Button
-                aria-label="退出登录"
-                color="danger"
-                icon={<LogOut aria-hidden="true" size={17} />}
-                type="text"
-                onClick={signOut}
-              />
-            </Tooltip>
-          </div>
+          <Dropdown menu={{ items: accountItems, onClick: ({ key }) => key === 'logout' && signOut() }} placement="bottomRight">
+            <Button aria-label="账户菜单" icon={<UserRound aria-hidden="true" size={17} />} type="text">
+              <span className="hidden lg:inline">{user.displayName}</span>
+            </Button>
+          </Dropdown>
         </div>
-      </Layout.Header>
-      <Layout.Content className="mx-auto w-full max-w-310 px-4 pt-7 pb-14 sm:px-7 sm:pt-8">
+      </header>
+      <main className="mx-auto w-full max-w-310 px-4 py-8 sm:px-7 sm:py-10">
         <Outlet />
-      </Layout.Content>
-    </Layout>
+      </main>
+    </div>
   );
 }

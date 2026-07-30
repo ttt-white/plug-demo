@@ -11,12 +11,14 @@ pnpm install
 pnpm dev
 ```
 
+`pnpm install` 会同时安装并构建 `external-repos/fms-plugin-carrier-ratings` 本地外部插件示例。
+
 开发服务器默认运行在 [http://localhost:3000](http://localhost:3000)。Mock 账号：
 
-| 身份     | 用户名   | 密码        | 权限                                    |
-| -------- | -------- | ----------- | --------------------------------------- |
-| 管理员   | `admin`  | `admin123`  | Dashboard、指标模块、履约报表、插件管理 |
-| 普通用户 | `viewer` | `viewer123` | 仅基础 Dashboard                        |
+| 身份     | 用户名   | 密码        | 权限                                                |
+| -------- | -------- | ----------- | --------------------------------------------------- |
+| 管理员   | `admin`  | `admin123`  | Dashboard、指标模块、履约报表、承运商评级、插件管理 |
+| 普通用户 | `viewer` | `viewer123` | 仅基础 Dashboard                                    |
 
 常用检查命令：
 
@@ -35,6 +37,7 @@ packages/plugin-sdk         npm 插件协议、运行时类型、注册校验
 plugins/shared              公共 PluginContainer 与错误边界
 plugins/dashboard-metrics   Dashboard 插槽模块示例
 plugins/reports             独立页面插件示例
+external-repos/fms-plugin-carrier-ratings  独立仓库与本机链接示例
 ```
 
 宿主当前公开一个模块插槽：`routeId: dashboard` + `slotId: dashboard.metrics`。新增插槽时需要同时在宿主页渲染 `PluginSlot`，并将插槽加入 `HOST_SLOTS` 白名单。
@@ -51,23 +54,48 @@ pnpm test
 
 `workspace:*` 继续用于仓库内部包。可发布插件的 `peerDependencies` 保留显式兼容范围，例如 `react: ^19.0.0`、`antd: ^6.0.0`，不使用 `catalog:`，避免把宿主当前安装版本误当成插件的最小兼容版本。
 
+pnpm 10 的 catalog 不支持 `link:` 协议。本机联调时仍在 catalog 中维护插件的目标发布版本，并通过根 `package.json` 的 `pnpm.overrides` 将该包替换为本地目录；远程或生产构建删除 override 后会恢复从 Registry 安装 catalog 版本。
+
+## 外部仓库本机联调
+
+仓库内提供了完整示例 [`external-repos/fms-plugin-carrier-ratings`](external-repos/fms-plugin-carrier-ratings/README.md)。首次安装由根脚本自动完成，也可以显式执行：
+
+```bash
+pnpm external:setup
+```
+
+持续开发时可以直接从外部插件仓库启动：
+
+```bash
+pnpm --dir external-repos/fms-plugin-carrier-ratings dev:host
+```
+
+外部仓库会根据 `fms.dev.json` 中的 `workspaceRoot` 和 `host.url` 启动宿主及插件 watcher；插件源码由宿主 Vite 直接加载并支持 React Fast Refresh。管理员登录后可从顶部菜单进入“承运商评级”，也可在插件中心即时启停。
+
+外部插件仓库的 `fms.dev.json` 控制宿主地址，例如 `http://localhost:3000`。根 `pnpm dev` 会按该地址启动宿主并等待其 Vite HMR 就绪；将 `host.start` 设为 `false` 可连接已经运行的宿主。
+
 ## 第三方 npm 插件
 
 第三方插件在构建期安装，并作为可信 React 代码与宿主同进程运行。首版不支持浏览器运行时下载插件，也不提供 iframe 隔离。
 
-1. 安装包：
+1. 在 `pnpm-workspace.yaml` 的 catalog 中登记插件版本：
 
-```bash
-pnpm --filter @fms/web add @vendor/fms-plugin
+```yaml
+catalog:
+  '@vendor/fms-plugin': 1.0.0
 ```
 
-2. 在 `apps/web/src/plugins/installedPlugins.ts` 静态导入并加入 `installedPlugins`。
+2. 在 `apps/web/package.json` 添加 `"@vendor/fms-plugin": "catalog:"` 并运行 `pnpm install`。
 
-3. Tailwind 插件需要发布预编译 CSS，或在宿主的 Tailwind 入口通过 `@source` 显式扫描插件包的 ESM 文件。本仓库使用 `@source '../../../plugins'` 扫描 workspace 示例插件。
+3. 在插件包 `package.json` 增加 `"fmsPlugin": { "apiVersion": 1 }`；宿主 Vite 会从 `apps/web/package.json` 的依赖自动发现并注册插件，不需要修改宿主源码。
 
-4. 重新启动或构建宿主。管理员可在插件中心启用、停用已打包插件。
+4. Tailwind 插件推荐在 `fmsPlugin.style` 声明 `./styles.css` 并通过 package exports 暴露；宿主会自动导入该样式。本仓库使用 `@source '../../../plugins'` 扫描 workspace 示例插件。
+
+5. 重新启动或构建宿主。管理员可在插件中心启用、停用已打包插件。
 
 最小插件入口：
+
+插件包还需要在 `package.json` 声明 `"fmsPlugin": { "apiVersion": 1 }`，宿主会自动发现它。
 
 ```ts
 import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@fms/plugin-sdk';

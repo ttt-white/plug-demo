@@ -8,7 +8,7 @@
 
 ```text
 npm/workspace 安装
-  -> installedPlugins 静态导入
+  -> Vite 从 apps/web/package.json 自动发现 fmsPlugin 包
   -> 宿主启动时校验贡献
   -> /api/plugins 返回启停状态
   -> 生成菜单、受保护路由或宿主插槽模块
@@ -74,7 +74,8 @@ fms-plugin-vendor-reports/
   "version": "1.0.0",
   "private": false,
   "type": "module",
-  "files": ["dist"],
+  "files": ["dist", "src"],
+  "fmsPlugin": { "apiVersion": 1, "style": "./styles.css" },
   "exports": {
     ".": {
       "development": "./src/index.ts",
@@ -83,9 +84,12 @@ fms-plugin-vendor-reports/
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-sdk && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-sdk --external @fms/plugin-shared && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@fms/plugin-shared": "workspace:*"
   },
   "devDependencies": {
     "@fms/plugin-sdk": "workspace:*",
@@ -101,7 +105,28 @@ fms-plugin-vendor-reports/
 }
 ```
 
-外部独立仓库不能使用 FMS workspace 的 `catalog:` 或 `workspace:*`，需要在 `devDependencies` 写实际开发版本；`peerDependencies` 仍声明兼容范围。
+`development` export 指向源码，因此 `files` 必须包含 `src`；如果不发布源码，则删除 `development` 条件，只保留 `dist` 的 `types` 和 `import`。不要发布一个指向包内不存在文件的 export。
+
+最小 TypeScript 配置：
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}
+```
+
+`tsconfig.build.json` 在此基础上设置 `noEmit: false`、`declaration: true`、`emitDeclarationOnly: true`、`rootDir: src` 和 `outDir: dist`。
+
+外部独立仓库不能使用 FMS workspace 的 `catalog:` 或 `workspace:*`，需要在 `dependencies`、`devDependencies` 写实际开发版本；`peerDependencies` 仍声明兼容范围。
 
 React、Ant Design 和 SDK 必须 externalize 并声明为 peer dependency，禁止打包进插件产物，否则可能出现多份 React、Hook 运行错误或 Ant Design 上下文不一致。
 
@@ -168,13 +193,19 @@ export const plugin: WorkspacePlugin = {
 插件组件统一接收 `runtime`：
 
 ```tsx
-import type { PluginComponentProps } from '@fms/plugin-sdk';
+import { PluginApiError, type PluginComponentProps } from '@fms/plugin-sdk';
 import { PluginContainer, type PluginContentState } from '@fms/plugin-shared';
 import { Button } from 'antd';
 import { useEffect, useState } from 'react';
 
 interface ResponseData {
   rows: Array<{ id: string; name: string }>;
+}
+
+function failureState(error: unknown): PluginContentState<ResponseData> {
+  if (error instanceof PluginApiError && error.status === 403) return { status: 'forbidden' };
+  if (!navigator.onLine) return { status: 'offline' };
+  return { status: 'error', error };
 }
 
 export default function VendorReportsPage({ runtime }: PluginComponentProps) {
@@ -188,7 +219,7 @@ export default function VendorReportsPage({ runtime }: PluginComponentProps) {
         if (active) setState(data.rows.length ? { status: 'ready', data } : { status: 'empty' });
       })
       .catch((error: unknown) => {
-        if (active) setState({ status: 'error', error });
+        if (active) setState(failureState(error));
       });
     return () => {
       active = false;
@@ -237,7 +268,7 @@ export default function VendorReportsPage({ runtime }: PluginComponentProps) {
 
 外部 npm 插件有两种样式交付方式：
 
-1. 推荐由插件发布预编译 CSS，并通过 package exports 暴露，由宿主显式导入。
+1. 推荐由插件发布预编译 CSS，在 `fmsPlugin.style` 声明并通过 package exports 暴露；宿主会自动导入。
 2. 由宿主扫描插件 ESM，例如在 `apps/web/src/styles.css` 添加：
 
 ```css
@@ -251,8 +282,8 @@ export default function VendorReportsPage({ runtime }: PluginComponentProps) {
 1. 在 `plugins/<plugin-name>` 创建插件包；`pnpm-workspace.yaml` 已包含 `plugins/*`。
 2. 在插件 `package.json` 使用 `catalog:` 管理外部依赖，使用 `workspace:*` 引用 SDK 和公共包。
 3. 运行 `pnpm install`。
-4. 在 `apps/web/src/plugins/installedPlugins.ts` 静态导入并加入 `installedPlugins`。
-5. 在 `apps/web/src/mocks/data.ts` 的默认插件状态中加入插件 ID，否则 Mock 插件中心无法启用它。
+4. 在插件包 `package.json` 增加 `fmsPlugin: { "apiVersion": 1 }`。宿主会从应用依赖自动发现插件，不需要修改宿主源码。
+5. Mock 插件状态会根据自动发现的插件 ID 生成；只有插件有专属 API 时，才需要新增 handler 和数据。
 6. 给 Mock 账号增加页面、模块或操作需要的权限码。
 7. 按需新增 Mock handler 和数据；handler 必须再次校验 token 与权限。
 8. 如果增加模块位置，先扩展宿主 `HOST_SLOTS` 和页面中的 `PluginSlot`。
@@ -269,6 +300,48 @@ pnpm build
 
 ## 9. 外部仓库本机联调
 
+### 9.1 仓库内的独立外部插件示例
+
+`external-repos/fms-plugin-carrier-ratings` 是可单独迁出和初始化 Git 的完整插件仓库。它有自己的 `package.json`、`pnpm-workspace.yaml`、`pnpm-lock.yaml`、构建、类型检查、lint、测试和打包检查，不属于根 workspace 的 `apps/*`、`packages/*` 或 `plugins/*`。
+
+宿主 catalog 维护目标发布版本：
+
+```yaml
+catalog:
+  '@fms-external/plugin-carrier-ratings': 1.0.0
+```
+
+由于 pnpm 10 的 catalog 不接受 `link:`，根 `package.json` 使用仅面向本机的 override：
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "@fms-external/plugin-carrier-ratings": "link:./external-repos/fms-plugin-carrier-ratings"
+    }
+  }
+}
+```
+
+首次准备：
+
+```bash
+pnpm external:setup
+pnpm install
+```
+
+持续联调可以直接从外部插件仓库启动：
+
+```bash
+pnpm dev:host
+```
+
+外部仓库的 `fms.dev.json` 配置宿主代码路径、宿主 URL、是否启动宿主以及是否等待 Vite 就绪。`dev:host` 按该配置调用宿主根命令并传递给插件 watcher；插件在开发条件下直接由 Vite 解析 `src/index.ts`，修改页面源码即可在该宿主触发 React Fast Refresh。准备连接远程 Registry 时，删除根 `pnpm.overrides` 中的本地替换并更新 catalog 版本。
+
+Vite 和 Vitest 的 `resolve.dedupe` 应包含 `react`、`react-dom`、`antd`、`@fms/plugin-sdk` 与 `@fms/plugin-shared`，确保本地链接包和宿主使用同一份运行时依赖。
+
+### 9.2 tgz 联调
+
 推荐使用 tgz 验证真实发布产物，避免 `pnpm link` 引入不同的 React 解析路径。
 
 在插件仓库执行：
@@ -281,17 +354,19 @@ pnpm build
 pnpm pack
 ```
 
-在 FMS 仓库安装生成的包：
+在 FMS 仓库临时安装生成的包：
 
 ```bash
 pnpm --filter @fms/web add /绝对路径/vendor-fms-plugin-vendor-reports-1.0.0.tgz
 ```
 
+绝对路径 tgz 只用于本机联调，不提交到共享分支。正式集成时改用 registry 中的不可变版本，并把版本放入 catalog。
+
 然后完成以下宿主改动：
 
-1. 在 `installedPlugins.ts` 静态导入插件。
+1. 在宿主依赖中安装插件，并确认插件包声明 `fmsPlugin.apiVersion: 1`；无需修改源码注册表。
 2. 配置插件启停初始数据和权限。
-3. 导入插件预编译 CSS，或在 Tailwind 入口添加 `@source`。
+3. 确认插件通过 `fmsPlugin.style` 暴露预编译 CSS，或在 Tailwind 入口添加 `@source`。
 4. 重新启动宿主开发服务器。
 
 每次插件变更后重新 `build + pack + add`。需要确认宿主使用了新包时，可运行：
@@ -300,7 +375,7 @@ pnpm --filter @fms/web add /绝对路径/vendor-fms-plugin-vendor-reports-1.0.0.
 pnpm --filter @fms/web list @vendor/fms-plugin-vendor-reports
 ```
 
-`pnpm link` 只适合短周期开发。使用 link 时，插件必须持续构建 `dist`、保持 React/Ant Design/SDK external，并在依赖缓存未刷新时用 `pnpm --filter @fms/web dev --force` 重启宿主。
+本地 link 开发时，插件 package exports 应提供 `development: ./src/index.ts` 并发布 `src`；宿主 Vite 会直接编译源码并触发 Fast Refresh。只有 CSS class 变化需要插件的 Tailwind watcher 更新预编译 CSS。
 
 ## 10. 远程联调
 
@@ -314,11 +389,14 @@ pnpm test
 pnpm publish --tag dev --no-git-checks
 ```
 
-建议版本包含流水线编号或 commit，例如 `1.1.0-dev.20260730.3`。宿主方安装明确版本：
+建议版本包含流水线编号或 commit，例如 `1.1.0-dev.20260730.3`。宿主方在 `pnpm-workspace.yaml` 的 catalog 中登记明确版本：
 
-```bash
-pnpm --filter @fms/web add @vendor/fms-plugin-vendor-reports@1.1.0-dev.20260730.3
+```yaml
+catalog:
+  '@vendor/fms-plugin-vendor-reports': 1.1.0-dev.20260730.3
 ```
+
+在 `apps/web/package.json` 添加 `"@vendor/fms-plugin-vendor-reports": "catalog:"`，然后运行 `pnpm install`。
 
 宿主提交 lockfile 后部署联调环境。不要只依赖可移动的 `dev` tag 判断当前运行版本。
 
@@ -326,13 +404,14 @@ pnpm --filter @fms/web add @vendor/fms-plugin-vendor-reports@1.1.0-dev.20260730.
 
 ### 10.2 远程 tgz 构建物
 
-CI 可以把 `pnpm pack` 生成的 tgz 上传到带权限和 HTTPS 的制品库。宿主使用固定 URL 安装：
+CI 可以把 `pnpm pack` 生成的 tgz 上传到带权限和 HTTPS 的制品库。宿主把固定 URL 放入 catalog：
 
-```bash
-pnpm --filter @fms/web add https://artifacts.example.com/fms/vendor-plugin-1.1.0-dev.3.tgz
+```yaml
+catalog:
+  '@vendor/fms-plugin-vendor-reports': https://artifacts.example.com/fms/vendor-plugin-1.1.0-dev.3.tgz
 ```
 
-每个构建使用不可变 URL；不要覆盖同名 tgz，否则 lockfile integrity 和实际内容会不一致。
+应用包仍使用 `catalog:` 引用，然后运行 `pnpm install`。每个构建使用不可变 URL；不要覆盖同名 tgz，否则 lockfile integrity 和实际内容会不一致。
 
 ### 10.3 共享远程宿主页面
 
@@ -350,7 +429,7 @@ pnpm --filter @fms/web dev --host 0.0.0.0 --port 3000
 
 ### 插件中心显示“注册失败”
 
-检查 API version、重复插件 ID、重复路由 ID/路径、宿主保留路由、重复模块 ID和未知插槽。错误原因会直接显示在插件中心。
+检查 API version、重复插件 ID、重复路由 ID/路径、宿主保留路由、重复模块 ID 和未知插槽。错误原因会直接显示在插件中心。
 
 ### 插件已安装但没有菜单
 
@@ -380,7 +459,7 @@ pnpm --filter @fms/web dev --host 0.0.0.0 --port 3000
 
 - manifest ID、贡献 ID、路径和版本正确且唯一。
 - 页面、模块、操作和 API 使用一致的权限码。
-- React、Ant Design、SDK 未被打入插件 bundle。
+- React、Ant Design、SDK 和公共插件组件未被打入插件 bundle。
 - ESM、动态 chunk 和 `.d.ts` 均包含在 npm 包中。
 - `pnpm pack` 后检查 files 清单，不发布源码缓存、测试产物或凭据。
 - loading、empty、error、forbidden、offline、ready 和重试行为已覆盖。

@@ -7,9 +7,9 @@ import {
   type WorkspacePlugin,
 } from '@fms/plugin-sdk';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { installedPlugins } from 'virtual:fms-installed-plugins';
 import { useAuth } from '@/auth/AuthProvider';
 import { apiClient } from '@/services/api-client';
-import { installedPlugins } from './installedPlugins';
 
 export const HOST_ROUTES = ['/login', '/dashboard', '/plugins'] as const;
 export const HOST_SLOTS = { dashboard: ['dashboard.metrics'] } as const;
@@ -83,7 +83,10 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
         .flatMap((registration) =>
           (registration.plugin.routes ?? []).map((contribution) => ({ plugin: registration.plugin, contribution })),
         )
-        .sort((left, right) => left.contribution.menu.order - right.contribution.menu.order),
+        .sort((left, right) => {
+          const order = left.contribution.menu.order - right.contribution.menu.order;
+          return order || left.plugin.manifest.id.localeCompare(right.plugin.manifest.id);
+        }),
     [activeRegistrations],
   );
 

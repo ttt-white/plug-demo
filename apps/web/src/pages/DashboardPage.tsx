@@ -1,10 +1,10 @@
-import { PluginApiError } from '@fms/plugin-sdk';
-import { PluginContainer, type PluginContentState } from '@fms/plugin-shared';
-import { Statistic, Tag, Typography } from 'antd';
-import { AlertTriangle, CheckCircle2, Clock3, Route } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
 import { PluginSlot } from '@/plugins/PluginRenderer';
 import { apiClient } from '@/services/api-client';
+import { PluginApiError } from '@fms/plugin-sdk';
+import { PluginContainer, type PluginContentState } from '@fms/plugin-shared';
+import { Col, Row, Statistic, Tag, Typography } from 'antd';
+import { AlertTriangle, CheckCircle2, Clock3, Route } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface DashboardSummary {
   updatedAt: string;
@@ -45,46 +45,52 @@ export function DashboardPage() {
   }, []);
 
   return (
-    <div className="grid gap-5.5">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+    <div className="grid gap-6">
+      <section
+        className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"
+        aria-labelledby="dashboard-title"
+      >
         <div>
-          <span className="text-xs font-extrabold text-[#21845d] uppercase">工作区概览</span>
-          <Typography.Title className="mt-1! mb-1! text-3xl!" level={1}>
+          <Typography.Text type="secondary">工作区概览</Typography.Text>
+          <Typography.Title id="dashboard-title" level={2}>
             早上好，运输团队
           </Typography.Title>
-          <Typography.Paragraph className="m-0! text-sm! text-[#707b75]!">这里是今天需要关注的业务进展。</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">这里是今天需要关注的业务进展。</Typography.Paragraph>
         </div>
         <Tag icon={<CheckCircle2 aria-hidden="true" size={15} />} color="success">
           数据已同步
         </Tag>
-      </div>
+      </section>
 
       <PluginContainer state={state} onRetry={load}>
         {(data) => (
-          <div className="grid divide-y divide-[#edf0ee] sm:grid-cols-[1fr_1fr_1.25fr] sm:divide-x sm:divide-y-0">
-            <div className="flex items-center gap-3 px-5.5 py-5">
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[#e7f5ee] text-[#1b7a55]">
-                <Route aria-hidden="true" size={18} />
-              </span>
-              <Statistic title="进行中任务" value={data.activeTasks} />
-            </div>
-            <div className="flex items-center gap-3 px-5.5 py-5">
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[#fff2d7] text-[#a17220]">
-                <AlertTriangle aria-hidden="true" size={18} />
-              </span>
-              <Statistic title="待处理预警" value={data.alerts} />
-            </div>
-            <div className="flex items-center gap-3 px-5.5 py-5">
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[#e9f1fb] text-[#326999]">
-                <Clock3 aria-hidden="true" size={18} />
-              </span>
-              <Statistic className="[&_.ant-statistic-content]:text-base!" title="数据更新时间" value={data.updatedAt} />
-            </div>
-          </div>
+          <Row gutter={[24, 24]}>
+            <Col xs={24} md={8}>
+              <Statistic
+                prefix={<Route aria-hidden="true" size={20} />}
+                suffix="项"
+                title="进行中任务"
+                value={data.activeTasks}
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <Statistic
+                prefix={<AlertTriangle aria-hidden="true" size={20} />}
+                suffix="条"
+                title="待处理预警"
+                value={data.alerts}
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <Statistic prefix={<Clock3 aria-hidden="true" size={20} />} title="数据更新时间" value={data.updatedAt} />
+            </Col>
+          </Row>
         )}
       </PluginContainer>
 
-      <PluginSlot routeId="dashboard" slotId="dashboard.metrics" />
+      <section aria-label="经营指标">
+        <PluginSlot routeId="dashboard" slotId="dashboard.metrics" />
+      </section>
     </div>
   );
 }

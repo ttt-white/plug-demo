@@ -15,7 +15,7 @@ export const mockAccounts: Record<string, MockAccount> = {
       username: 'admin',
       displayName: '系统管理员',
       role: 'admin',
-      permissions: ['dashboard:view', 'dashboard:metrics:view', 'reports:view', 'plugins:manage'],
+      permissions: ['*'],
     },
   },
   viewer: {
@@ -79,25 +79,40 @@ export const reportsData = {
   ],
 };
 
-const PLUGIN_STATE_KEY = 'fms.mock.plugin-states';
-const defaultPluginStates = [
-  { id: 'dashboard-metrics', enabled: true },
-  { id: 'reports-page', enabled: true },
-];
+export const carrierRatingsData = {
+  updatedAt: '2026-07-30 14:20',
+  rows: [
+    { id: 'carrier-001', carrier: '东驰物流', level: 'A', score: 96, onTimeRate: 98.2, incidents: 1, trend: 2.4 },
+    { id: 'carrier-002', carrier: '华运供应链', level: 'A', score: 91, onTimeRate: 95.8, incidents: 2, trend: 1.1 },
+    { id: 'carrier-003', carrier: '捷航运输', level: 'B', score: 84, onTimeRate: 91.6, incidents: 5, trend: -0.8 },
+    { id: 'carrier-004', carrier: '北辰货运', level: 'C', score: 72, onTimeRate: 86.4, incidents: 9, trend: -3.2 },
+  ],
+};
 
-export function readPluginStates() {
+const PLUGIN_STATE_KEY = 'fms.mock.plugin-states';
+export function readPluginStates(installedPluginIds: readonly string[]) {
+  const defaultPluginStates = installedPluginIds.map((id) => ({ id, enabled: true }));
   try {
     const stored = localStorage.getItem(PLUGIN_STATE_KEY);
     if (!stored) return defaultPluginStates;
     const parsed = JSON.parse(stored) as unknown;
-    return Array.isArray(parsed) ? (parsed as typeof defaultPluginStates) : defaultPluginStates;
+    if (!Array.isArray(parsed)) return defaultPluginStates;
+    const storedById = new Map(
+      parsed
+        .filter(
+          (state): state is { id: string; enabled: boolean } =>
+            typeof state === 'object' && state !== null && typeof state.id === 'string' && typeof state.enabled === 'boolean',
+        )
+        .map((state) => [state.id, state.enabled]),
+    );
+    return defaultPluginStates.map((state) => ({ ...state, enabled: storedById.get(state.id) ?? state.enabled }));
   } catch {
     return defaultPluginStates;
   }
 }
 
-export function writePluginState(id: string, enabled: boolean) {
-  const states = readPluginStates();
+export function writePluginState(id: string, enabled: boolean, installedPluginIds: readonly string[]) {
+  const states = readPluginStates(installedPluginIds);
   const next = states.map((state) => (state.id === id ? { ...state, enabled } : state));
   localStorage.setItem(PLUGIN_STATE_KEY, JSON.stringify(next));
   return next;

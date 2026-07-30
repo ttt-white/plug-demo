@@ -115,6 +115,9 @@ catalogs:
       specifier: ^4.0.18
       version: 4.1.10
 
+overrides:
+  '@fms-external/plugin-carrier-ratings': link:./external-repos/fms-plugin-carrier-ratings
+
 importers:
 
   .:
@@ -197,6 +200,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@fms-external/plugin-carrier-ratings':
+        specifier: link:../../external-repos/fms-plugin-carrier-ratings
+        version: link:../../external-repos/fms-plugin-carrier-ratings
       '@fms/plugin-dashboard-metrics':
         specifier: workspace:*
         version: link:../../plugins/dashboard-metrics

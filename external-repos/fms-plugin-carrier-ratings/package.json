@@ -1,0 +1,68 @@
+{
+  "name": "@fms-external/plugin-carrier-ratings",
+  "version": "1.0.0",
+  "description": "FMS Workspace external carrier ratings page plugin",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pnpm build:js && pnpm build:css",
+    "build:js": "tsup src/index.ts --format esm --splitting --clean --dts --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-shared --external lucide-react",
+    "build:css": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --minify",
+    "dev": "node scripts/dev.mjs",
+    "predev:host": "pnpm build",
+    "dev:host": "node scripts/start-host.mjs",
+    "dev:watch": "node scripts/dev.mjs --skip-host-check",
+    "dev:js": "tsup src/index.ts --format esm --splitting --dts --watch --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-shared --external lucide-react",
+    "dev:css": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect src",
+    "test": "vitest run",
+    "pack:check": "pnpm pack --dry-run"
+  },
+  "devDependencies": {
+    "@fms/plugin-sdk": "link:../../packages/plugin-sdk",
+    "@fms/plugin-shared": "link:../../plugins/shared",
+    "@tailwindcss/cli": "catalog:",
+    "@types/react": "catalog:",
+    "antd": "catalog:",
+    "lucide-react": "catalog:",
+    "oxlint": "catalog:",
+    "react": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@fms/plugin-sdk": "^1.0.0",
+    "@fms/plugin-shared": "^1.0.0",
+    "antd": "^6.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "fmsPlugin": {
+    "apiVersion": 1,
+    "style": "./styles.css"
+  }
+}

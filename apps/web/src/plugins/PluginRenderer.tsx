@@ -1,8 +1,8 @@
 import type { PluginComponentLoader, PluginComponentProps } from '@fms/plugin-sdk';
 import { PluginErrorBoundary, PluginSuspense } from '@fms/plugin-shared';
 import { createElement, lazy, type LazyExoticComponent, type ComponentType, type ReactNode } from 'react';
+import { installedPlugins } from 'virtual:fms-installed-plugins';
 import { FullScreenLoading } from '@/components/FullScreenLoading';
-import { installedPlugins } from './installedPlugins';
 import { usePluginRegistry, type ResolvedRoute } from './PluginRegistryProvider';
 
 const componentCache = new WeakMap<PluginComponentLoader, LazyExoticComponent<ComponentType<PluginComponentProps>>>();
@@ -15,7 +15,7 @@ for (const plugin of installedPlugins) {
 
 function getLazyComponent(loader: PluginComponentLoader) {
   const component = componentCache.get(loader);
-  if (!component) throw new Error('插件组件未在 installedPlugins 中注册');
+  if (!component) throw new Error('插件组件未被自动发现');
   return component;
 }
 

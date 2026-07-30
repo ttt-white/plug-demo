@@ -4,11 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @fms/web dev",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "lint": "eslint apps packages plugins && oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect apps packages plugins",
+    "preinstall": "pnpm external:install",
+    "postinstall": "pnpm external:build",
+    "dev": "node scripts/dev.mjs",
+    "build": "pnpm external:build && pnpm -r build",
+    "typecheck": "pnpm external:typecheck && pnpm -r typecheck",
+    "test": "pnpm external:test && pnpm -r test",
+    "lint": "pnpm external:lint && eslint apps packages plugins && oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect apps packages plugins",
+    "external:install": "pnpm --dir external-repos/fms-plugin-carrier-ratings install",
+    "external:build": "pnpm --dir external-repos/fms-plugin-carrier-ratings build",
+    "external:dev": "pnpm --dir external-repos/fms-plugin-carrier-ratings dev",
+    "external:typecheck": "pnpm --dir external-repos/fms-plugin-carrier-ratings typecheck",
+    "external:test": "pnpm --dir external-repos/fms-plugin-carrier-ratings test",
+    "external:lint": "pnpm --dir external-repos/fms-plugin-carrier-ratings lint",
+    "external:setup": "pnpm external:install && pnpm external:build",
     "commit": "git add . && lefthook run pre-commit && git add . && czg --no-verify"
   },
   "devDependencies": {
@@ -42,5 +51,10 @@
     "node": ">=24.0.0",
     "pnpm": ">=10.0.0"
   },
-  "packageManager": "pnpm@10.30.3"
+  "packageManager": "pnpm@10.30.3",
+  "pnpm": {
+    "overrides": {
+      "@fms-external/plugin-carrier-ratings": "link:./external-repos/fms-plugin-carrier-ratings"
+    }
+  }
 }
