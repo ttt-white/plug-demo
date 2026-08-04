@@ -41,6 +41,9 @@ importers:
 
   .:
     devDependencies:
+      '@fms/plugin-contracts':
+        specifier: link:../../packages/plugin-contracts
+        version: link:../../packages/plugin-contracts
       '@fms/plugin-sdk':
         specifier: link:../../packages/plugin-sdk
         version: link:../../packages/plugin-sdk

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fms-external/plugin-three": "catalog:",
+    "@fms/plugin-contracts": "workspace:*",
     "@fms/plugin-one": "workspace:*",
     "@fms/plugin-sdk": "workspace:*",
     "@fms/plugin-two": "workspace:*",

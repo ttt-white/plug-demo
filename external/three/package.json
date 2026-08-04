@@ -22,13 +22,13 @@
   },
   "scripts": {
     "build": "pnpm build:js && pnpm build:css",
-    "build:js": "tsup src/index.ts --format esm --splitting --clean --dts --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-two --external lucide-react",
+    "build:js": "tsup src/index.ts --format esm --splitting --clean --dts --external react --external react/jsx-runtime --external antd --external @fms/plugin-contracts --external @fms/plugin-sdk --external lucide-react",
     "build:css": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --minify",
     "dev": "node scripts/dev.mjs",
     "predev:host": "pnpm build",
     "dev:host": "node scripts/start-host.mjs",
     "dev:watch": "node scripts/dev.mjs --skip-host-check",
-    "dev:js": "tsup src/index.ts --format esm --splitting --dts --watch --external react --external react/jsx-runtime --external antd --external @fms/plugin-sdk --external @fms/plugin-two --external lucide-react",
+    "dev:js": "tsup src/index.ts --format esm --splitting --dts --watch --external react --external react/jsx-runtime --external antd --external @fms/plugin-contracts --external @fms/plugin-sdk --external lucide-react",
     "dev:css": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --watch",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect src",
@@ -36,6 +36,7 @@
     "pack:check": "pnpm pack --dry-run"
   },
   "devDependencies": {
+    "@fms/plugin-contracts": "link:../../packages/plugin-contracts",
     "@fms/plugin-sdk": "link:../../packages/plugin-sdk",
     "@fms/plugin-two": "link:../../plugins/two",
     "@tailwindcss/cli": "catalog:",
@@ -50,6 +51,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
+    "@fms/plugin-contracts": "^1.0.0",
     "@fms/plugin-sdk": "^1.0.0",
     "@fms/plugin-two": "^1.0.0",
     "antd": "^6.0.0",

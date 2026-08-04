@@ -1,7 +1,7 @@
-import { twoContract } from '@fms/plugin-two';
+import { twoContract, workspaceContract } from '@fms/plugin-contracts';
 import type { PluginComponentProps } from '@fms/plugin-sdk';
 import { Button, Result, Space, Spin, Typography } from 'antd';
-import { ArrowRight, RefreshCw, Send } from 'lucide-react';
+import { ArrowRight, Radio, RefreshCw, Send } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { threeContract } from './contract';
 
@@ -17,6 +17,7 @@ type ViewState = { status: 'loading' } | { status: 'ready'; data: ThreeResponse 
 
 export default function ThreeTwoModule({ runtime }: PluginComponentProps) {
   const [state, setState] = useState<ViewState>({ status: 'loading' });
+  const [publicMessage, setPublicMessage] = useState('three 模块尚未收到公共消息');
 
   const load = useCallback(() => {
     setState({ status: 'loading' });
@@ -25,6 +26,14 @@ export default function ThreeTwoModule({ runtime }: PluginComponentProps) {
       .then((data) => setState({ status: 'ready', data }))
       .catch(() => setState({ status: 'error' }));
   }, [runtime.api]);
+
+  useEffect(
+    () =>
+      runtime.channel.subscribePublic(workspaceContract.channels.publicMessage, ({ message }, { fromPluginId }) => {
+        setPublicMessage(`three 模块收到 ${fromPluginId}：${message}`);
+      }),
+    [runtime.channel],
+  );
 
   useEffect(() => {
     let active = true;
@@ -59,6 +68,7 @@ export default function ThreeTwoModule({ runtime }: PluginComponentProps) {
   return (
     <Space wrap>
       <Typography.Text>这是 three 插件开发在 two 页面中的模块</Typography.Text>
+      <Typography.Text type="secondary">{publicMessage}</Typography.Text>
       <Button
         icon={<Send aria-hidden="true" size={16} />}
         onClick={() =>
@@ -68,6 +78,16 @@ export default function ThreeTwoModule({ runtime }: PluginComponentProps) {
         }
       >
         发送到 two
+      </Button>
+      <Button
+        icon={<Radio aria-hidden="true" size={16} />}
+        onClick={() =>
+          runtime.channel.publishPublic(workspaceContract.channels.publicMessage, {
+            message: 'three 模块发出的工作区广播',
+          })
+        }
+      >
+        three 公共广播
       </Button>
       <Button
         icon={<ArrowRight aria-hidden="true" size={16} />}

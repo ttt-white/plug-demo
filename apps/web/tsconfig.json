@@ -5,6 +5,7 @@
     "noEmit": true,
     "paths": {
       "@/*": ["./src/*"],
+      "@fms/plugin-contracts": ["../../packages/plugin-contracts/src/index.ts"],
       "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
       "@fms/plugin-one": ["../../plugins/one/src/index.ts"],
       "@fms/plugin-two": ["../../plugins/two/src/index.ts"]

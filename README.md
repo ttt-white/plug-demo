@@ -34,6 +34,7 @@ pnpm build
 ```text
 apps/web                    宿主应用、路由、鉴权、Mock API
 packages/plugin-sdk         npm 插件协议、运行时类型、注册校验
+packages/plugin-contracts   one/two/three 共享配置与公共通道契约
 plugins/one                 工作台插槽模块示例
 plugins/two                 履约报表整页插件示例
 external/three              承运商评级外部插件与本机链接示例
@@ -41,7 +42,9 @@ external/three              承运商评级外部插件与本机链接示例
 
 宿主当前公开一个模块插槽：`routeId: dashboard` + `slotId: dashboard.metrics`。新增插槽时需要同时在宿主页渲染 `PluginSlot`，并将插槽加入 `HOST_SLOTS` 白名单。
 
-`plugins/two` 同时演示插件开放扩展插槽；外部 `three` 插件向该插槽贡献模块，并在 two 页面注册一个跳到唯一真实路由 `/carrier-ratings` 的类型化入口。两个插件还通过 `runtime.channel` 传递消息。详细协议见开发规范的“跨插件扩展、页面入口与通信”。
+`workspaceContract.plugins` 集中提供 one、two、three 的类型化配置，任意插件都能读取其他插件的真实 URL、路由、插槽和通道。`plugins/two` 同时演示插件开放扩展插槽；外部 `three` 插件向该插槽贡献模块，并在 two 页面注册一个跳到唯一真实路由 `/carrier-ratings` 的类型化入口。
+
+通信分为两类：`publish/subscribe` 向指定插件发送定向消息；`publishPublic/subscribePublic` 通过 `workspaceContract.channels.publicMessage` 向所有当前订阅插件广播。详细协议见开发规范的“跨插件扩展、页面入口与通信”。
 
 ## 依赖 Catalog
 
@@ -139,7 +142,7 @@ export default function VendorReportsPage({ runtime }: PluginComponentProps) {
 }
 ```
 
-插件包应将 `react`、`antd` 和 `@fms/plugin-sdk` 声明为 peer dependencies，输出 ESM 与 `.d.ts`。交互组件使用 Ant Design，布局和定制样式使用 Tailwind utility。插件 ID、路由 ID、路由路径和模块 ID 必须唯一；`/login`、`/dashboard`、`/plugins` 为宿主保留路径。无效插件不会注入菜单、路由或模块，错误原因会显示在插件中心。
+插件包应将 `react`、`antd`、`@fms/plugin-sdk` 和使用到的 `@fms/plugin-contracts` 声明为 peer dependencies，输出 ESM 与 `.d.ts`。交互组件使用 Ant Design，布局和定制样式使用 Tailwind utility。插件 ID、路由 ID、路由路径和模块 ID 必须唯一；`/login`、`/dashboard`、`/plugins` 为宿主保留路径。无效插件不会注入菜单、路由或模块，错误原因会显示在插件中心。
 
 ## 鉴权与 Mock
 

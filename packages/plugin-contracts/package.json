@@ -1,0 +1,29 @@
+{
+  "name": "@fms/plugin-contracts",
+  "version": "1.0.0",
+  "private": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean --external @fms/plugin-sdk && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@fms/plugin-sdk": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@fms/plugin-sdk": "^1.0.0"
+  }
+}

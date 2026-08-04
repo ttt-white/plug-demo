@@ -32,6 +32,9 @@ describe('workspace flows', () => {
 
     expect(await screen.findByText('这是宿主的工作台页面，对应菜单 one')).toBeInTheDocument();
     expect(await screen.findByText('这是 one 插件开发在工作台的指标模块')).toBeInTheDocument();
+    expect(screen.getByText('one 已获取配置：two /reports，three /carrier-ratings')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'one 公共广播' }));
+    expect(screen.getByText('公共消息来自 one：one 发出的工作区广播')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /two/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /插件中心/ }));
@@ -66,6 +69,7 @@ describe('workspace flows', () => {
     await user.click(await screen.findByRole('button', { name: '登录工作区' }));
 
     expect(await screen.findByText('这是 three 插件的外部页面1112', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByText('three 已获取配置：one /dashboard，two /reports')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /three/ })).toBeInTheDocument();
   });
 
@@ -75,6 +79,14 @@ describe('workspace flows', () => {
     await user.click(await screen.findByRole('button', { name: '登录工作区' }));
 
     expect(await screen.findByText('这是 three 插件开发在 two 页面中的模块', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByText('two 已获取配置：one /dashboard，three /carrier-ratings')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'two 公共广播' }));
+    expect(screen.getByText('three 模块收到 two：two 发出的工作区广播')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'three 公共广播' }));
+    expect(screen.getByText('公共消息来自 three：three 模块发出的工作区广播')).toBeInTheDocument();
+
     await user.click(await screen.findByRole('button', { name: '发送到 two' }, { timeout: 3000 }));
     expect(screen.getByText('收到承运商筛选消息：东驰物流')).toBeInTheDocument();
 

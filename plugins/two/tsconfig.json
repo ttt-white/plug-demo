@@ -3,6 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
+      "@fms/plugin-contracts": ["../../packages/plugin-contracts/src/index.ts"],
       "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"]
     }
   },

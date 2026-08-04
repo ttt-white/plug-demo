@@ -8,11 +8,12 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     conditions: ['development'],
-    dedupe: ['react', 'react-dom', 'antd', '@fms/plugin-sdk'],
+    dedupe: ['react', 'react-dom', 'antd', '@fms/plugin-contracts', '@fms/plugin-sdk'],
   },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     clearMocks: true,
+    testTimeout: 10000,
   },
 });

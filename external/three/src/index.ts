@@ -1,4 +1,4 @@
-import { twoContract } from '@fms/plugin-two';
+import { twoContract } from '@fms/plugin-contracts';
 import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@fms/plugin-sdk';
 import { threeContract } from './contract';
 
@@ -15,7 +15,7 @@ export const plugin: WorkspacePlugin = {
   routes: [
     {
       id: threeContract.routes.three.routeId,
-      path: '/carrier-ratings',
+      path: threeContract.routes.three.path,
       permission: 'carrier-ratings:view',
       menu: { label: 'three', icon: 'badge-check', order: 35 },
       load: () => import('./ThreePage'),

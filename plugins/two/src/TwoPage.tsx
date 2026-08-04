@@ -1,6 +1,7 @@
+import { workspaceContract } from '@fms/plugin-contracts';
 import type { PluginComponentProps } from '@fms/plugin-sdk';
 import { Button, Result, Space, Spin, Typography } from 'antd';
-import { ArrowRight, RefreshCw } from 'lucide-react';
+import { ArrowRight, Radio, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { twoContract } from './contract';
 
@@ -12,6 +13,7 @@ type ViewState = 'loading' | 'ready' | 'error';
 
 export default function TwoPage({ runtime }: PluginComponentProps) {
   const [message, setMessage] = useState('尚未收到其他插件的消息');
+  const [publicMessage, setPublicMessage] = useState('尚未收到公共消息');
   const [state, setState] = useState<ViewState>('loading');
 
   const loadReports = useCallback(() => {
@@ -45,6 +47,14 @@ export default function TwoPage({ runtime }: PluginComponentProps) {
     [runtime.channel],
   );
 
+  useEffect(
+    () =>
+      runtime.channel.subscribePublic(workspaceContract.channels.publicMessage, ({ message }, { fromPluginId }) => {
+        setPublicMessage(`公共消息来自 ${fromPluginId}：${message}`);
+      }),
+    [runtime.channel],
+  );
+
   if (state === 'loading') return <Spin description="正在加载 two" />;
   if (state === 'error') {
     return (
@@ -61,11 +71,26 @@ export default function TwoPage({ runtime }: PluginComponentProps) {
   }
 
   const linkedRoutes = runtime.extensions.routesFor(twoContract.routes.two);
+  const { one, three } = workspaceContract.plugins;
   return (
     <div className="grid gap-4">
       <Space orientation="vertical" size={4}>
         <Typography.Text>这是 two 插件的履约报表页面</Typography.Text>
+        <Typography.Text type="secondary">
+          two 已获取配置：one {one.targets.dashboardMetrics.path}，three {three.routes.three.path}
+        </Typography.Text>
         <Typography.Text type="secondary">{message}</Typography.Text>
+        <Typography.Text type="secondary">{publicMessage}</Typography.Text>
+        <Button
+          icon={<Radio aria-hidden="true" size={16} />}
+          onClick={() =>
+            runtime.channel.publishPublic(workspaceContract.channels.publicMessage, {
+              message: 'two 发出的工作区广播',
+            })
+          }
+        >
+          two 公共广播
+        </Button>
         {linkedRoutes.map((route) => (
           <Button
             key={`${route.pluginId}:${route.id}`}

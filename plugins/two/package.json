@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-sdk --external lucide-react && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-contracts --external @fms/plugin-sdk --external lucide-react && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
@@ -23,12 +23,14 @@
     "lucide-react": "catalog:"
   },
   "devDependencies": {
+    "@fms/plugin-contracts": "workspace:*",
     "@fms/plugin-sdk": "workspace:*",
     "@types/react": "catalog:",
     "antd": "catalog:",
     "react": "catalog:"
   },
   "peerDependencies": {
+    "@fms/plugin-contracts": "^1.0.0",
     "@fms/plugin-sdk": "^1.0.0",
     "antd": "^6.0.0",
     "react": "^19.0.0"

@@ -70,6 +70,19 @@ export interface PluginChannelReference<TPayload, TPluginId extends string = str
   readonly payload?: TPayload;
 }
 
+/**
+ * 指向工作区公共消息主题的类型化引用。
+ *
+ * @typeParam TPayload 公共消息载荷。
+ * @typeParam TTopic 公共消息主题；contract 应填写字符串字面量。
+ */
+export interface PluginPublicChannelReference<TPayload, TTopic extends string = string> {
+  /** 所有插件共同订阅的公共消息主题。 */
+  readonly topic: TTopic;
+  /** 仅用于携带泛型，不会出现在运行时对象中。 */
+  readonly payload?: TPayload;
+}
+
 /** 单个插件使用的消息发布与订阅通道。 */
 export interface PluginChannel {
   /** 使用 contract 中的类型化通道对象发布消息。 */
@@ -80,6 +93,13 @@ export interface PluginChannel {
   subscribe<T>(channel: PluginChannelReference<T>, listener: (payload: T, context: PluginChannelContext) => void): () => void;
   /** 按主题订阅当前插件的通道，并返回取消订阅函数。 */
   subscribe<T>(topic: string, listener: (payload: T, context: PluginChannelContext) => void): () => void;
+  /** 向所有订阅该公共 contract 通道的插件广播消息。 */
+  publishPublic<T>(channel: PluginPublicChannelReference<T>, payload: NoInfer<T>): void;
+  /** 订阅公共 contract 通道，并返回取消订阅函数。 */
+  subscribePublic<T>(
+    channel: PluginPublicChannelReference<T>,
+    listener: (payload: T, context: PluginChannelContext) => void,
+  ): () => void;
 }
 
 /** 宿主级插件消息总线。 */
@@ -99,8 +119,25 @@ function requiredChannelName(value: string, label: string) {
 /** 创建一个内存消息总线；单个监听器异常不会中断其他插件监听器。 */
 export function createPluginChannelBus(): PluginChannelBus {
   const listeners = new Map<string, Set<PluginChannelListener>>();
+  const publicListeners = new Map<string, Set<PluginChannelListener>>();
   const channels = new Map<string, PluginChannel>();
   const channelKey = (pluginId: string, topic: string) => `${pluginId}\0${topic}`;
+
+  function deliver(
+    subscribers: Set<PluginChannelListener> | undefined,
+    message: unknown,
+    context: PluginChannelContext,
+    failureLabel: string,
+  ) {
+    if (!subscribers) return;
+    for (const subscriber of subscribers) {
+      try {
+        subscriber(message, context);
+      } catch (error) {
+        console.error(failureLabel, error);
+      }
+    }
+  }
 
   return {
     forPlugin(pluginId) {
@@ -117,14 +154,12 @@ export function createPluginChannelBus(): PluginChannelBus {
         const target = requiredChannelName(targetPluginId, '目标插件 ID');
         const normalizedTopic = requiredChannelName(topic, '通道主题');
         const subscribers = listeners.get(channelKey(target, normalizedTopic));
-        if (!subscribers) return;
-        for (const subscriber of subscribers) {
-          try {
-            subscriber(message, { fromPluginId: sourcePluginId });
-          } catch (error) {
-            console.error(`插件通道处理失败：${sourcePluginId} -> ${target}/${normalizedTopic}`, error);
-          }
-        }
+        deliver(
+          subscribers,
+          message,
+          { fromPluginId: sourcePluginId },
+          `插件定向通道处理失败：${sourcePluginId} -> ${target}/${normalizedTopic}`,
+        );
       }
 
       function subscribe<T>(
@@ -153,9 +188,36 @@ export function createPluginChannelBus(): PluginChannelBus {
         };
       }
 
+      function publishPublic<T>(channel: PluginPublicChannelReference<T>, payload: NoInfer<T>) {
+        const topic = requiredChannelName(channel.topic, '公共通道主题');
+        deliver(
+          publicListeners.get(topic),
+          payload,
+          { fromPluginId: sourcePluginId },
+          `插件公共通道处理失败：${sourcePluginId} -> */${topic}`,
+        );
+      }
+
+      function subscribePublic<T>(
+        channel: PluginPublicChannelReference<T>,
+        listener: (payload: T, context: PluginChannelContext) => void,
+      ) {
+        const topic = requiredChannelName(channel.topic, '公共通道主题');
+        const subscribers = publicListeners.get(topic) ?? new Set<PluginChannelListener>();
+        const subscriber = listener as PluginChannelListener;
+        subscribers.add(subscriber);
+        publicListeners.set(topic, subscribers);
+        return () => {
+          subscribers.delete(subscriber);
+          if (subscribers.size === 0) publicListeners.delete(topic);
+        };
+      }
+
       const channel: PluginChannel = {
         publish,
+        publishPublic,
         subscribe,
+        subscribePublic,
       };
       channels.set(sourcePluginId, channel);
       return channel;

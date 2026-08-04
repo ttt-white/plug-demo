@@ -7,6 +7,7 @@ import {
   validatePlugins,
   type PluginComponentProps,
   type PluginChannelReference,
+  type PluginPublicChannelReference,
   type WorkspacePlugin,
 } from './index';
 
@@ -190,6 +191,43 @@ describe('createPluginChannelBus', () => {
     expect(() => bus.forPlugin('three').publish('two', 'refresh', undefined)).not.toThrow();
     expect(healthyListener).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
+  });
+
+  it('broadcasts typed public messages to every subscribed plugin and supports unsubscribe', () => {
+    const bus = createPluginChannelBus();
+    const oneListener = vi.fn();
+    const twoListener = vi.fn();
+    const publicMessage: PluginPublicChannelReference<{ message: string }, 'workspace:public-message'> = {
+      topic: 'workspace:public-message',
+    };
+    const unsubscribeOne = bus.forPlugin('one').subscribePublic(publicMessage, oneListener);
+    bus.forPlugin('two').subscribePublic(publicMessage, twoListener);
+
+    bus.forPlugin('three').publishPublic(publicMessage, { message: 'three 广播' });
+    expect(oneListener).toHaveBeenCalledWith({ message: 'three 广播' }, { fromPluginId: 'three' });
+    expect(twoListener).toHaveBeenCalledWith({ message: 'three 广播' }, { fromPluginId: 'three' });
+
+    unsubscribeOne();
+    bus.forPlugin('two').publishPublic(publicMessage, { message: 'two 广播' });
+    expect(oneListener).toHaveBeenCalledOnce();
+    expect(twoListener).toHaveBeenCalledTimes(2);
+  });
+
+  it('isolates a failing public channel subscriber', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const bus = createPluginChannelBus();
+    const healthyListener = vi.fn();
+    const publicMessage: PluginPublicChannelReference<void> = { topic: 'workspace:public-message' };
+    bus.forPlugin('one').subscribePublic(publicMessage, () => {
+      throw new Error('broken public subscriber');
+    });
+    bus.forPlugin('two').subscribePublic(publicMessage, healthyListener);
+
+    expect(() => bus.forPlugin('three').publishPublic(publicMessage, undefined)).not.toThrow();
+    expect(healthyListener).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
   });
 });
 

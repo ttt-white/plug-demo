@@ -23,8 +23,8 @@
     "ignoreDeprecations": "6.0",
     "types": ["vitest/globals"],
     "paths": {
-      "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
-      "@fms/plugin-two": ["../../plugins/two/src/index.ts"]
+      "@fms/plugin-contracts": ["../../packages/plugin-contracts/src/index.ts"],
+      "@fms/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"]
     }
   },
   "include": ["src"]

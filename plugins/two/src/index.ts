@@ -14,7 +14,7 @@ export const plugin: WorkspacePlugin = {
   routes: [
     {
       id: twoContract.routes.two.routeId,
-      path: '/reports',
+      path: twoContract.routes.two.path,
       permission: 'reports:view',
       menu: { label: 'two', icon: 'chart-no-axes-column', order: 30 },
       load: () => import('./TwoPage'),

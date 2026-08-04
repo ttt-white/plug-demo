@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@fms/plugin-sdk": ["../plugin-sdk/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

@@ -32,6 +32,7 @@ npm/workspace 安装
 | 插件扩展模块 | A 向 B 明确开放的插槽增加功能          | `extensionSlots + modules` | 报表中的承运商评级摘要   |
 | 插件页面入口 | A 在 B 页面增加指向唯一业务页面的入口  | `routeLinks`               | 报表中的承运商评级入口   |
 | 插件定向通信 | A 向 B 发布有类型约束的内存消息        | `runtime.channel`          | 评级摘要驱动报表筛选条件 |
+| 插件公共通信 | 多个插件订阅同一类型化工作区广播       | `publishPublic`            | one、two、three 公共消息 |
 
 模块必须同时匹配 `routeId + slotId`。宿主当前公开：
 
@@ -190,18 +191,23 @@ export const plugin: WorkspacePlugin = {
 
 ### 5.3 跨插件扩展、页面入口与通信
 
-B 插件必须先发布稳定契约，A 不得复制 B 的插件 ID、路由 ID、插槽 ID 或 topic 字符串。每个 `contract.ts` 必须遵守以下规范：
+跨插件配置集中发布在独立的 `@fms/plugin-contracts` 包中，避免 one、two、three 彼此形成 npm 循环依赖。各插件自己的 `contract.ts` 只 re-export 对应对象，插件内部仍从本地入口引用。A 不得复制 B 的插件 ID、路由 ID、插槽 ID、URL 或 topic 字符串。
 
 - 唯一运行时导出使用 `<插件名>Contract` camelCase 对象，例如 `twoContract`。
 - 必须使用显式的 `<业务名>PluginContract` interface 注解，禁止只写 `as const` 或散落字符串常量。
 - 对象固定按 `pluginId / routes / slots / channels` 分组；没有某类能力时可省略该分组。
-- 路由、插槽、通道分别使用 SDK 的 `PluginRouteReference`、`PluginSlotReference`、`PluginChannelReference<TPayload>`。
+- 路由、插槽、定向通道和公共通道分别使用 SDK 的 `PluginRouteReference`、`PluginSlotReference`、`PluginChannelReference<TPayload>`、`PluginPublicChannelReference<TPayload>`。
 - 每个导出类型、字段和载荷属性必须写 TSDoc，明确业务、真实 URL、插槽位置或消息语义。
 - 消费方直接 import 契约对象；不得复制插件 ID、路由 ID、插槽 ID 或 topic。
 
 ```ts
-// B: contract.ts
-import type { PluginChannelReference, PluginRouteReference, PluginSlotReference } from '@fms/plugin-sdk';
+// packages/plugin-contracts/src/index.ts
+import type {
+  PluginChannelReference,
+  PluginPublicChannelReference,
+  PluginRouteReference,
+  PluginSlotReference,
+} from '@fms/plugin-sdk';
 
 /** three 向 two 发送承运商筛选条件时使用的消息载荷。 */
 export interface TwoFilterCarrierPayload {
@@ -215,7 +221,7 @@ export interface TwoPluginContract {
   readonly pluginId: 'two';
   readonly routes: {
     /** 履约报表页面，对应唯一 URL `/reports`。 */
-    readonly two: PluginRouteReference<'two', 'two'>;
+    readonly two: PluginRouteReference<'two', 'two'> & { readonly path: '/reports' };
   };
   readonly slots: {
     /** two 履约报表页面中的摘要模块插槽。 */
@@ -231,7 +237,7 @@ export interface TwoPluginContract {
 export const twoContract: TwoPluginContract = {
   pluginId: 'two',
   routes: {
-    two: { pluginId: 'two', routeId: 'two' },
+    two: { pluginId: 'two', routeId: 'two', path: '/reports' },
   },
   slots: {
     summary: { pluginId: 'two', routeId: 'two', slotId: 'two.summary' },
@@ -240,6 +246,26 @@ export const twoContract: TwoPluginContract = {
     filterCarrier: { pluginId: 'two', topic: 'two:filter-carrier' },
   },
 };
+
+export interface WorkspacePublicMessagePayload {
+  /** 所有订阅插件都能读取的公共消息正文。 */
+  message: string;
+}
+
+export const workspaceContract: {
+  plugins: { one: OnePluginContract; two: TwoPluginContract; three: ThreePluginContract };
+  channels: {
+    publicMessage: PluginPublicChannelReference<WorkspacePublicMessagePayload, 'workspace:public-message'>;
+  };
+} = {
+  plugins: { one: oneContract, two: twoContract, three: threeContract },
+  channels: {
+    publicMessage: { topic: 'workspace:public-message' },
+  },
+};
+
+// plugins/two/src/contract.ts
+export { twoContract, type TwoPluginContract } from '@fms/plugin-contracts';
 ```
 
 B 在插件入口开放插槽，并在页面中直接渲染入口和插槽：
@@ -253,7 +279,7 @@ export const plugin: WorkspacePlugin = {
   routes: [
     {
       id: twoContract.routes.two.routeId,
-      path: '/reports',
+      path: twoContract.routes.two.path,
       permission: 'reports:view',
       menu: { label: 'two', order: 30 },
       load: () => import('./TwoPage'),
@@ -293,7 +319,7 @@ export default function TwoPage({ runtime }: PluginComponentProps) {
 A 将 B 包声明为 peer dependency，并使用 B 导出的契约注册模块和页面入口。A 的页面只注册一个真实地址：
 
 ```ts
-// A: contract.ts
+// packages/plugin-contracts/src/index.ts
 import type { PluginRouteReference } from '@fms/plugin-sdk';
 
 /** three 插件公开给宿主和其他插件使用的类型化契约。 */
@@ -302,27 +328,26 @@ export interface ThreePluginContract {
   readonly pluginId: 'three';
   readonly routes: {
     /** 承运商评级页面，对应唯一 URL `/carrier-ratings`。 */
-    readonly three: PluginRouteReference<'three', 'three'>;
+    readonly three: PluginRouteReference<'three', 'three'> & { readonly path: '/carrier-ratings' };
   };
 }
 
 export const threeContract: ThreePluginContract = {
   pluginId: 'three',
   routes: {
-    three: { pluginId: 'three', routeId: 'three' },
+    three: { pluginId: 'three', routeId: 'three', path: '/carrier-ratings' },
   },
 };
 
 // A: index.ts
-import { twoContract } from '@fms/plugin-two';
-import { threeContract } from './contract';
+import { threeContract, twoContract } from '@fms/plugin-contracts';
 
 export const plugin: WorkspacePlugin = {
   manifest: { id: threeContract.pluginId, name: 'three', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
   routes: [
     {
       id: threeContract.routes.three.routeId,
-      path: '/carrier-ratings',
+      path: threeContract.routes.three.path,
       permission: 'carrier-ratings:view',
       menu: { label: 'three', order: 35 },
       load: () => import('./ThreePage'),
@@ -364,6 +389,27 @@ runtime.channel.publish(twoContract.channels.filterCarrier, {
 });
 ```
 
+任意插件都可以读取其他插件配置，并通过公共 contract 通道广播。公共订阅必须放在 effect 中并返回取消订阅函数：
+
+```tsx
+import { workspaceContract } from '@fms/plugin-contracts';
+
+const twoConfig = workspaceContract.plugins.two;
+const threeConfig = workspaceContract.plugins.three;
+
+useEffect(
+  () =>
+    runtime.channel.subscribePublic(workspaceContract.channels.publicMessage, (payload, context) => {
+      console.log(context.fromPluginId, payload.message);
+    }),
+  [runtime.channel],
+);
+
+runtime.channel.publishPublic(workspaceContract.channels.publicMessage, {
+  message: `已读取 ${twoConfig.routes.two.path} 和 ${threeConfig.routes.three.path}`,
+});
+```
+
 约束：
 
 - A 和 B 必须同时安装、注册成功、启用且通过权限过滤，扩展模块和页面入口才会出现。
@@ -371,8 +417,9 @@ runtime.channel.publish(twoContract.channels.filterCarrier, {
 - `routeLinks` 的 `parentRoute` 和 `targetRoute` 都使用 `pluginId + routeId`，宿主会校验引用并解析目标真实路径。
 - 一个页面只在 `routes` 中声明一个真实地址。`routeLinks` 只贡献入口，不注册别名，因此 `/carrier-ratings` 不会再同时出现 `/reports/carrier-ratings`。
 - 页面入口会同时经过入口权限与目标路由权限过滤，不会生成重复的顶部一级菜单。
-- `runtime.channel` 是当前页面进程内的同步、定向消息通道，不持久化、不跨标签页，也不替代后端 API。
-- `subscribe` 必须在 effect 中调用并返回取消订阅函数；单个订阅者异常会被宿主隔离，不影响其他插件。
+- `runtime.channel` 是当前页面进程内的同步消息通道，不持久化、不跨标签页，也不替代后端 API。
+- `publish` 只发送给目标插件；`publishPublic` 发送给该公共 topic 的所有当前订阅者，包括发送插件自身。
+- `subscribe` 和 `subscribePublic` 必须在 effect 中调用并返回取消订阅函数；单个订阅者异常会被宿主隔离，不影响其他插件。
 - topic 和 payload 类型属于 B 的公共 API。破坏性变更必须升级 B 的主版本，并同步调整 A 的 peer dependency 范围。
 - 禁止从 `contract.ts` 导出 `TWO_PLUGIN_ID`、`TWO_ROUTE_ID` 这类运行时散常量；统一从 contract 对象读取。
 
@@ -510,7 +557,7 @@ pnpm dev:host
 
 外部仓库的 `fms.dev.json` 配置宿主代码路径、宿主 URL、是否启动宿主以及是否等待 Vite 就绪。`dev:host` 按该配置调用宿主根命令并传递给插件 watcher；插件在开发条件下直接由 Vite 解析 `src/index.ts`，修改页面源码即可在该宿主触发 React Fast Refresh。准备连接远程 Registry 时，删除根 `pnpm.overrides` 中的本地替换并更新 catalog 版本。
 
-Vite 和 Vitest 的 `resolve.dedupe` 应包含 `react`、`react-dom`、`antd` 与 `@fms/plugin-sdk`，确保本地链接包和宿主使用同一份运行时依赖。
+Vite 和 Vitest 的 `resolve.dedupe` 应包含 `react`、`react-dom`、`antd`、`@fms/plugin-contracts` 与 `@fms/plugin-sdk`，确保本地链接包和宿主使用同一份运行时依赖。
 
 ### 9.2 tgz 联调
 
@@ -631,7 +678,7 @@ pnpm --filter @fms/web dev --host 0.0.0.0 --port 3000
 
 - manifest ID、贡献 ID、路径和版本正确且唯一。
 - 页面、模块、操作和 API 使用一致的权限码。
-- React、Ant Design、SDK 和公共插件组件未被打入插件 bundle。
+- React、Ant Design、SDK 和公共契约包未被打入插件 bundle。
 - ESM、动态 chunk 和 `.d.ts` 均包含在 npm 包中。
 - `pnpm pack` 后检查 files 清单，不发布源码缓存、测试产物或凭据。
 - loading、empty、error、forbidden、offline、ready 和重试行为已覆盖。

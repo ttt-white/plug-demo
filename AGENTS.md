@@ -6,6 +6,7 @@
 
 - `apps/web/`：Vite 宿主应用，包含路由、鉴权、Mock Service Worker 和应用级测试。
 - `packages/plugin-sdk/`：插件协议、类型、校验与排序逻辑。
+- `packages/plugin-contracts/`：one、two、three 的共享配置与工作区公共通道契约。
 - `plugins/one/`：工作台插槽模块插件示例。
 - `plugins/two/`：履约报表整页插件与公共契约示例。
 - `external/three/`：承运商评级外部插件和跨插件扩展示例，不属于根 workspace。
