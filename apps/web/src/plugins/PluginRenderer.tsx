@@ -1,26 +1,14 @@
-import type { PluginComponentLoader, PluginComponentProps, PluginSlotReference } from '@fms/plugin-sdk';
-import { Button, Result, Spin } from 'antd';
-import { RefreshCw } from 'lucide-react';
-import {
-  Component,
-  Suspense,
-  createElement,
-  lazy,
-  useCallback,
-  type ComponentType,
-  type ErrorInfo,
-  type LazyExoticComponent,
-  type ReactNode,
-} from 'react';
-import { installedPlugins } from 'virtual:fms-installed-plugins';
 import { FullScreenLoading } from '@/components/FullScreenLoading';
+import type { PluginComponentLoader, PluginComponentProps, PluginSlotReference } from '@fms/plugin-sdk';
+import { Button, Result, Space, Spin } from 'antd';
+import { RefreshCw } from 'lucide-react';
+import { Component, Suspense, createElement, lazy, useCallback, useMemo, useState, type ErrorInfo, type ReactNode } from 'react';
 import { usePluginRegistry, type ResolvedRoute } from './PluginRegistryProvider';
-
-const componentCache = new WeakMap<PluginComponentLoader, LazyExoticComponent<ComponentType<PluginComponentProps>>>();
 
 interface PluginErrorBoundaryProps {
   children: ReactNode;
   title: string;
+  onRetry(): void;
 }
 
 interface PluginErrorBoundaryState {
@@ -40,12 +28,16 @@ class PluginErrorBoundary extends Component<PluginErrorBoundaryProps, PluginErro
 
   override render() {
     if (!this.state.error) return this.props.children;
+    const chunkLoadFailed = isChunkLoadError(this.state.error);
     return (
       <Result
         extra={
-          <Button icon={<RefreshCw aria-hidden="true" size={16} />} onClick={() => this.setState({ error: null })}>
-            重试
-          </Button>
+          <Space wrap>
+            <Button icon={<RefreshCw aria-hidden="true" size={16} />} onClick={this.props.onRetry}>
+              重试
+            </Button>
+            {chunkLoadFailed && <Button onClick={() => window.location.reload()}>刷新页面</Button>}
+          </Space>
         }
         role="alert"
         status="error"
@@ -55,20 +47,39 @@ class PluginErrorBoundary extends Component<PluginErrorBoundaryProps, PluginErro
   }
 }
 
+function isChunkLoadError(error: Error) {
+  return /ChunkLoadError|Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk/i.test(
+    `${error.name}: ${error.message}`,
+  );
+}
+
 function PluginSuspense({ children }: { children: ReactNode }) {
   return <Suspense fallback={<Spin description="正在加载插件" />}>{children}</Suspense>;
 }
 
-for (const plugin of installedPlugins) {
-  for (const contribution of [...(plugin.routes ?? []), ...(plugin.modules ?? [])]) {
-    if (!componentCache.has(contribution.load)) componentCache.set(contribution.load, lazy(contribution.load));
-  }
-}
-
-function getLazyComponent(loader: PluginComponentLoader) {
-  const component = componentCache.get(loader);
-  if (!component) throw new Error('插件组件未被自动发现');
-  return component;
+function PluginComponentRenderer({
+  loader,
+  runtime,
+  title,
+}: {
+  loader: PluginComponentLoader;
+  runtime: PluginComponentProps['runtime'];
+  title: string;
+}) {
+  const [attempt, setAttempt] = useState(0);
+  const component = useMemo(
+    () =>
+      lazy(() => {
+        void attempt;
+        return loader();
+      }),
+    [attempt, loader],
+  );
+  return (
+    <PluginErrorBoundary key={attempt} title={title} onRetry={() => setAttempt((current) => current + 1)}>
+      <PluginSuspense>{createElement(component, { runtime })}</PluginSuspense>
+    </PluginErrorBoundary>
+  );
 }
 
 function usePluginRuntime(pluginId: string) {
@@ -89,9 +100,7 @@ export function PluginPageRenderer({ route }: { route: ResolvedRoute }) {
   const runtime = usePluginRuntime(route.plugin.manifest.id);
   if (!runtime) return <FullScreenLoading />;
   return (
-    <PluginErrorBoundary title={`${route.plugin.manifest.name}暂不可用`}>
-      <PluginSuspense>{createElement(getLazyComponent(route.contribution.load), { runtime })}</PluginSuspense>
-    </PluginErrorBoundary>
+    <PluginComponentRenderer loader={route.contribution.load} runtime={runtime} title={`${route.plugin.manifest.name}暂不可用`} />
   );
 }
 
@@ -99,9 +108,11 @@ function PluginModuleRenderer({ module }: { module: ReturnType<ReturnType<typeof
   const runtime = usePluginRuntime(module.plugin.manifest.id);
   if (!runtime) return null;
   return (
-    <PluginErrorBoundary title={`${module.plugin.manifest.name}暂不可用`}>
-      <PluginSuspense>{createElement(getLazyComponent(module.contribution.load), { runtime })}</PluginSuspense>
-    </PluginErrorBoundary>
+    <PluginComponentRenderer
+      loader={module.contribution.load}
+      runtime={runtime}
+      title={`${module.plugin.manifest.name}暂不可用`}
+    />
   );
 }
 

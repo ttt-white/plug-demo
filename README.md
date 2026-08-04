@@ -2,7 +2,7 @@
 
 FMS Workspace 是一个基于 React 19、Ant Design 6、Tailwind CSS 4、Vite、TypeScript 6 和 pnpm workspace 的前端插件基座。宿主负责登录、RBAC、菜单、路由、API 鉴权与插件生命周期；插件可以贡献完整页面、宿主路由模块，也可以通过有类型约束的通道、扩展插槽和页面入口扩展其他插件。
 
-插件包结构、开发规范、本机联调和远程联调流程见 [FMS 插件开发与联调规范](docs/plugin-development.md)。
+新成员的环境准备、日常流程、workspace/npm 包开发和交付规范见 [FMS 开发入门与工程规范](docs/start.md)。插件协议、跨插件扩展、本机联调和远程联调细节见 [FMS 插件开发与联调规范](docs/plugin-development.md)。
 
 ## 快速开始
 

@@ -11,13 +11,17 @@ export const plugin: WorkspacePlugin = {
     version: '1.0.0',
     apiVersion: PLUGIN_API_VERSION,
     description: '来自独立代码仓库的承运商服务质量评级页面。',
+    requires: {
+      plugins: [{ id: 'two', range: '^1.0.0', optional: true }],
+      capabilities: [{ id: 'reports.filter-carrier', range: '^1.0.0', optional: true }],
+    },
   },
   routes: [
     {
       id: threeContract.routes.three.routeId,
       path: threeContract.routes.three.path,
       permission: 'carrier-ratings:view',
-      menu: { label: 'three', icon: 'badge-check', order: 35 },
+      menu: { label: '承运商评级', icon: 'badge-check', order: 35 },
       load: () => import('./ThreePage'),
     },
   ],
@@ -27,7 +31,7 @@ export const plugin: WorkspacePlugin = {
       parentRoute: twoContract.routes.two,
       targetRoute: threeContract.routes.three,
       permission: 'carrier-ratings:view',
-      menu: { label: 'three', icon: 'badge-check', order: 10 },
+      menu: { label: '承运商评级', icon: 'badge-check', order: 10 },
     },
   ],
   modules: [

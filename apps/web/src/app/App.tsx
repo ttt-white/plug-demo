@@ -1,46 +1,69 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { RequireAuth, RequirePermission } from '@/auth/RouteGuards';
 import { useAuth } from '@/auth/AuthProvider';
+import { RequireAuth, RequirePermission } from '@/auth/RouteGuards';
 import { FullScreenLoading } from '@/components/FullScreenLoading';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { PluginCenterPage } from '@/pages/PluginCenterPage';
-import { PluginPageRenderer } from '@/plugins/PluginRenderer';
 import { usePluginRegistry } from '@/plugins/PluginRegistryProvider';
+import { PluginPageRenderer } from '@/plugins/PluginRenderer';
+import type { ReactNode } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
+import { getWorkspaceHome, HOST_ROUTE_CATALOG, LOGIN_PATH, safeReturnPath, type HostRouteId } from './route-catalog';
+
+const hostRouteElements: Record<HostRouteId, ReactNode> = {
+  dashboard: <DashboardPage />,
+  plugins: <PluginCenterPage />,
+  forbidden: <ForbiddenPage />,
+};
 
 export function App() {
-  const { user, bootstrapping } = useAuth();
+  const { user, bootstrapping, can } = useAuth();
   const { routes, loading: pluginsLoading } = usePluginRegistry();
   const location = useLocation();
   if (bootstrapping) return <FullScreenLoading />;
 
   const loginState = location.state as { from?: string } | null;
-  const authenticatedDestination = loginState?.from?.startsWith('/') ? loginState.from : '/dashboard';
+  const workspaceHome = getWorkspaceHome(can, routes);
+  const authenticatedDestination = safeReturnPath(loginState?.from) ?? workspaceHome;
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to={authenticatedDestination} replace /> : <LoginPage />} />
+      <Route
+        path={LOGIN_PATH}
+        element={
+          user ? (
+            pluginsLoading ? (
+              <FullScreenLoading label="正在读取工作区入口" />
+            ) : (
+              <Navigate to={authenticatedDestination} replace />
+            )
+          ) : (
+            <LoginPage />
+          )
+        }
+      />
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route
-            path="dashboard"
-            element={
-              <RequirePermission permission="dashboard:view">
-                <DashboardPage />
-              </RequirePermission>
-            }
+            index
+            element={pluginsLoading ? <FullScreenLoading label="正在读取工作区入口" /> : <Navigate to={workspaceHome} replace />}
           />
-          <Route
-            path="plugins"
-            element={
-              <RequirePermission permission="plugins:manage">
-                <PluginCenterPage />
-              </RequirePermission>
-            }
-          />
+          {HOST_ROUTE_CATALOG.map((route) => (
+            <Route
+              key={route.id}
+              path={route.path.slice(1)}
+              element={
+                route.permission ? (
+                  <RequirePermission permission={route.permission}>{hostRouteElements[route.id]}</RequirePermission>
+                ) : (
+                  hostRouteElements[route.id]
+                )
+              }
+            />
+          ))}
           {!pluginsLoading &&
             routes.map((route) => (
               <Route

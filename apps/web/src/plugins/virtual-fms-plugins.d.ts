@@ -1,5 +1,5 @@
 declare module 'virtual:fms-installed-plugins' {
-  import type { WorkspacePlugin } from '@fms/plugin-sdk';
+  import type { PluginPackageDescriptor } from '@fms/plugin-sdk';
 
-  export const installedPlugins: WorkspacePlugin[];
+  export const installedPluginDescriptors: PluginPackageDescriptor[];
 }

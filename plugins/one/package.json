@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @fms/plugin-contracts --external @fms/plugin-sdk --external lucide-react && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
     "lucide-react": "catalog:"
@@ -25,9 +25,13 @@
   "devDependencies": {
     "@fms/plugin-contracts": "workspace:*",
     "@fms/plugin-sdk": "workspace:*",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "antd": "catalog:",
-    "react": "catalog:"
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@fms/plugin-contracts": "^1.0.0",
@@ -36,6 +40,7 @@
     "react": "^19.0.0"
   },
   "fmsPlugin": {
+    "id": "one",
     "apiVersion": 1
   }
 }

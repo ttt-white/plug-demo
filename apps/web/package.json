@@ -17,7 +17,6 @@
     "@fms/plugin-two": "workspace:*",
     "antd": "catalog:",
     "lucide-react": "catalog:",
-    "msw": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router-dom": "catalog:"
@@ -27,6 +26,8 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "axe-core": "catalog:",
+    "msw": "catalog:",
     "tailwindcss": "catalog:",
     "tw-animate-css": "catalog:",
     "vite": "catalog:"

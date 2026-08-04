@@ -4,6 +4,95 @@ import type {
   PluginRouteReference,
   PluginSlotReference,
 } from '@fms/plugin-sdk';
+import { z } from 'zod';
+
+export const dashboardMetricSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  value: z.string().min(1),
+  change: z.number().finite(),
+});
+
+export const dashboardSummarySchema = z.object({
+  updatedAt: z.string().min(1),
+  inTransit: z.number().int().nonnegative(),
+  pendingDispatch: z.number().int().nonnegative(),
+  exceptions: z.number().int().nonnegative(),
+  completedToday: z.number().int().nonnegative(),
+  onTimeRate: z.number().min(0).max(100),
+  metrics: z.array(dashboardMetricSchema),
+});
+
+export type DashboardMetric = z.infer<typeof dashboardMetricSchema>;
+export type DashboardSummary = z.infer<typeof dashboardSummarySchema>;
+
+export const REPORT_STATUSES = ['待处理', '运输中', '已完成', '异常'] as const;
+export const reportStatusSchema = z.enum(REPORT_STATUSES);
+export type ReportStatus = z.infer<typeof reportStatusSchema>;
+
+export const reportRowSchema = z.object({
+  id: z.string().min(1),
+  origin: z.string().min(1),
+  destination: z.string().min(1),
+  carrier: z.string().min(1),
+  status: reportStatusSchema,
+  amount: z.number().nonnegative(),
+  updatedAt: z.string().min(1),
+});
+
+export const reportsResponseSchema = z.object({
+  updatedAt: z.string().min(1),
+  total: z.number().int().nonnegative(),
+  rows: z.array(reportRowSchema),
+  facets: z.object({
+    carriers: z.array(z.string().min(1)),
+    statuses: z.array(reportStatusSchema),
+  }),
+});
+
+export type ReportRow = z.infer<typeof reportRowSchema>;
+export type ReportsResponse = z.infer<typeof reportsResponseSchema>;
+
+export const carrierRiskSchema = z.enum(['low', 'medium', 'high']);
+export type CarrierRisk = z.infer<typeof carrierRiskSchema>;
+
+export const carrierRatingSchema = z.object({
+  id: z.string().min(1),
+  carrier: z.string().min(1),
+  level: z.enum(['A', 'B', 'C', 'D']),
+  score: z.number().min(0).max(100),
+  onTimeRate: z.number().min(0).max(100),
+  incidents: z.number().int().nonnegative(),
+  trend: z.number().finite(),
+  risk: carrierRiskSchema,
+});
+
+export const carrierRatingsResponseSchema = z.object({
+  updatedAt: z.string().min(1),
+  rows: z.array(carrierRatingSchema),
+});
+
+export type CarrierRating = z.infer<typeof carrierRatingSchema>;
+export type CarrierRatingsResponse = z.infer<typeof carrierRatingsResponseSchema>;
+
+/** 宿主和插件共同使用的 FMS 数据查询契约。 */
+export const fmsDataContract = {
+  dashboard: {
+    path: '/api/dashboard',
+    queryKey: ['fms', 'dashboard'] as const,
+    schema: dashboardSummarySchema,
+  },
+  reports: {
+    path: '/api/reports',
+    queryKey: ['fms', 'reports'] as const,
+    schema: reportsResponseSchema,
+  },
+  carrierRatings: {
+    path: '/api/carrier-ratings',
+    queryKey: ['fms', 'carrier-ratings'] as const,
+    schema: carrierRatingsResponseSchema,
+  },
+} as const;
 
 /** one 插件对宿主能力的静态引用，用于避免在 manifest 中散落路由和插槽字符串。 */
 export interface OnePluginContract {

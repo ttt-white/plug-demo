@@ -1,6 +1,6 @@
+import { server } from '@/mocks/server';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { server } from '@/mocks/server';
 import { apiClient, setUnauthorizedHandler, TOKEN_STORAGE_KEY } from './api-client';
 
 afterEach(() => setUnauthorizedHandler(undefined));

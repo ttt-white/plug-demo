@@ -43,7 +43,7 @@ npm/workspace 安装
 新增宿主插槽时，宿主开发者必须同时：
 
 1. 在目标页面渲染 `PluginSlot`。
-2. 在 `PluginRegistryProvider.tsx` 的 `HOST_SLOTS` 中声明白名单。
+2. 在 `apps/web/src/app/route-catalog.ts` 的 `HOST_SLOTS` 中声明白名单。
 3. 约定插槽尺寸、数据语义和权限码。
 
 ## 3. 命名与权限规范
@@ -79,7 +79,7 @@ fms-plugin-vendor-reports/
   "private": false,
   "type": "module",
   "files": ["dist", "src"],
-  "fmsPlugin": { "apiVersion": 1, "style": "./styles.css" },
+  "fmsPlugin": { "id": "vendor-reports", "apiVersion": 1, "style": "./styles.css" },
   "exports": {
     ".": {
       "development": "./src/index.ts",
@@ -107,6 +107,8 @@ fms-plugin-vendor-reports/
 ```
 
 `development` export 指向源码，因此 `files` 必须包含 `src`；如果不发布源码，则删除 `development` 条件，只保留 `dist` 的 `types` 和 `import`。不要发布一个指向包内不存在文件的 export。
+
+`fmsPlugin.id`、`package.json.version` 和 `fmsPlugin.apiVersion` 是宿主不执行插件代码即可读取的发现元数据，必须分别与 `manifest.id`、`manifest.version` 和 `manifest.apiVersion` 一致。插件入口必须提供名为 `plugin` 的导出；宿主会逐包动态加载，缺少导出或顶层执行失败只会让当前包注册失败，并在插件中心显示 package、阶段和错误码。
 
 最小 TypeScript 配置：
 
@@ -189,7 +191,34 @@ export const plugin: WorkspacePlugin = {
 
 不要通过 `document.querySelector`、Portal 或全局事件把模块挂到任意 DOM。新增位置应先扩展宿主插槽协议。
 
-### 5.3 跨插件扩展、页面入口与通信
+### 5.3 声明插件依赖与能力
+
+跨插件调用应在 manifest 中声明 SemVer 依赖。直接依赖已知插件时使用 `requires.plugins`；调用可由多个插件实现的抽象能力时，提供方使用 `provides.capabilities`，消费方使用 `requires.capabilities`：
+
+```ts
+export const plugin: WorkspacePlugin = {
+  manifest: {
+    id: 'vendor-risk',
+    name: '供应商风险模块',
+    version: '1.0.0',
+    apiVersion: PLUGIN_API_VERSION,
+    requires: {
+      plugins: [{ id: 'vendor-reports', range: '^1.0.0' }],
+      capabilities: [{ id: 'reports.filter-carrier', range: '^1.0.0', optional: true }],
+    },
+    provides: {
+      capabilities: [{ id: 'vendor-risk.summary', version: '1.0.0' }],
+    },
+  },
+};
+```
+
+- 必选依赖缺失、版本不匹配、注册失败或形成循环时，当前插件不能注册。
+- `optional: true` 的依赖不可用时只产生 warning，插件本身仍可注册；对应代码必须具备降级路径。
+- 能力和插件版本必须使用有效 SemVer；依赖范围使用标准 SemVer range。
+- 静态贡献仍必须引用真实存在的路由或插槽。把目标声明为 optional 不会让无效贡献变得可用。
+
+### 5.4 跨插件扩展、页面入口与通信
 
 跨插件配置集中发布在独立的 `@fms/plugin-contracts` 包中，避免 one、two、three 彼此形成 npm 循环依赖。各插件自己的 `contract.ts` 只 re-export 对应对象，插件内部仍从本地入口引用。A 不得复制 B 的插件 ID、路由 ID、插槽 ID、URL 或 topic 字符串。
 
@@ -381,6 +410,16 @@ export const plugin: WorkspacePlugin = {
 runtime.extensions.navigateTo(threeContract.routes.three);
 ```
 
+需要把筛选等可分享状态带到目标页时，通过 `PluginNavigationOptions.search` 附加查询参数，不手工拼接 URL：
+
+```ts
+runtime.extensions.navigateTo(twoContract.routes.two, {
+  search: { carrier: row.carrier, status: null },
+});
+```
+
+`string | number | boolean` 会序列化为查询参数，`null | undefined` 会删除同名参数；设置 `replace: true` 可替换当前历史记录。目标页应从 URL 读取筛选条件，使刷新、复制链接和前进后退保持一致。
+
 A 组件通过定向 channel 调用 B 的功能：
 
 ```ts
@@ -417,57 +456,85 @@ runtime.channel.publishPublic(workspaceContract.channels.publicMessage, {
 - `routeLinks` 的 `parentRoute` 和 `targetRoute` 都使用 `pluginId + routeId`，宿主会校验引用并解析目标真实路径。
 - 一个页面只在 `routes` 中声明一个真实地址。`routeLinks` 只贡献入口，不注册别名，因此 `/carrier-ratings` 不会再同时出现 `/reports/carrier-ratings`。
 - 页面入口会同时经过入口权限与目标路由权限过滤，不会生成重复的顶部一级菜单。
-- `runtime.channel` 是当前页面进程内的同步消息通道，不持久化、不跨标签页，也不替代后端 API。
+- `runtime.channel` 是当前页面进程内的内存消息通道，不持久化、不跨标签页，也不替代后端 API。
 - `publish` 只发送给目标插件；`publishPublic` 发送给该公共 topic 的所有当前订阅者，包括发送插件自身。
-- `subscribe` 和 `subscribePublic` 必须在 effect 中调用并返回取消订阅函数；单个订阅者异常会被宿主隔离，不影响其他插件。
+- `subscribe` 和 `subscribePublic` 监听器可以返回 `void | Promise<void>`，必须在 effect 中订阅并返回取消订阅函数；同步抛错和异步 rejection 都会被宿主隔离，不影响其他插件。
 - topic 和 payload 类型属于 B 的公共 API。破坏性变更必须升级 B 的主版本，并同步调整 A 的 peer dependency 范围。
 - 禁止从 `contract.ts` 导出 `TWO_PLUGIN_ID`、`TWO_ROUTE_ID` 这类运行时散常量；统一从 contract 对象读取。
 
-## 6. 组件开发规范
+## 6. 组件与数据查询规范
 
-插件组件统一接收 `runtime`：
+### 6.1 DTO Schema 与查询契约
+
+插件公开 API 的响应类型必须由能力提供方拥有，并同时提供运行时 Schema。宿主和多个插件共享的数据放在契约包；插件私有接口可放在插件自己的 `contract.ts`。
+
+```ts
+import { z } from 'zod';
+
+export const vendorReportsResponseSchema = z.object({
+  updatedAt: z.string().min(1),
+  rows: z.array(
+    z.object({
+      id: z.string().min(1),
+      carrier: z.string().min(1),
+      amount: z.number().nonnegative(),
+    }),
+  ),
+});
+
+export type VendorReportsResponse = z.infer<typeof vendorReportsResponseSchema>;
+
+export const vendorReportsQuery = {
+  path: '/api/vendor-reports',
+  queryKey: ['vendor', 'reports'] as const,
+  schema: vendorReportsResponseSchema,
+};
+```
+
+不要只声明 TypeScript interface 后直接断言接口结果。`runtime.query` 会把 Schema 解析失败统一转换为查询错误，避免畸形数据进入组件。
+
+### 6.2 使用宿主共享 Query Service
+
+插件组件统一接收 `runtime`，并通过 `usePluginQuery` 订阅宿主 Query Service：
 
 ```tsx
-import type { PluginComponentProps } from '@fms/plugin-sdk';
-import { Result, Spin, Typography } from 'antd';
-import { useEffect, useState } from 'react';
-
-type ViewState = 'loading' | 'ready' | 'error';
+import { usePluginQuery, type PluginComponentProps } from '@fms/plugin-sdk';
+import { Empty, Result, Spin, Typography } from 'antd';
+import { vendorReportsQuery } from './contract';
 
 export default function VendorReportsPage({ runtime }: PluginComponentProps) {
-  const [state, setState] = useState<ViewState>('loading');
+  const reportsQuery = usePluginQuery(runtime.query, {
+    queryKey: vendorReportsQuery.queryKey,
+    schema: vendorReportsQuery.schema,
+    queryFn: ({ signal }) => runtime.api.get<unknown>(vendorReportsQuery.path, { signal }),
+  });
+  const reports = reportsQuery.data;
 
-  useEffect(() => {
-    let active = true;
-    void runtime.api
-      .get('/api/vendor-reports')
-      .then(() => {
-        if (active) setState('ready');
-      })
-      .catch(() => {
-        if (active) setState('error');
-      });
-    return () => {
-      active = false;
-    };
-  }, [runtime.api]);
+  if ((reportsQuery.status === 'idle' || reportsQuery.status === 'loading') && !reports) {
+    return <Spin description="正在加载" />;
+  }
+  if (reportsQuery.status === 'error' && !reports) {
+    return <Result status="error" title="加载失败" subTitle={reportsQuery.error?.message} />;
+  }
+  if (!reports || reports.rows.length === 0) return <Empty description="暂无数据" />;
 
-  if (state === 'loading') return <Spin description="正在加载" />;
-  if (state === 'error') return <Result status="error" title="加载失败" />;
-  return <Typography.Text>这是 vendor-reports 插件页面</Typography.Text>;
+  return <Typography.Text>共 {reports.rows.length} 条</Typography.Text>;
 }
 ```
 
+Query Service 默认提供跨宿主/插件请求去重、缓存、超时、重试、取消、手动刷新和旧数据保留。相同 query key 必须对应相同 `queryFn` 与 Schema；筛选、排序和分页条件必须进入 query key，并同步到 URL。宿主会按登录用户创建和清理缓存，插件不得在模块顶层建立跨用户缓存。
+
 必须遵守：
 
-- 请求统一使用 `runtime.api`，不得自行读取 token 或绕过统一 401/403 行为。
+- 请求统一使用 `runtime.api`，服务端状态优先通过 `runtime.query` 管理，不得自行读取 token 或绕过统一 401/403 行为。
 - 当前 SDK 提供 `get`、`post`、`patch`；新增方法应先升级 SDK 协议。
+- 刷新时如果已有成功数据，应继续展示旧数据并给出局部错误提示；首次失败才使用整页 `Result`。
 - 使用 `runtime.can(permission)` 控制按钮等细粒度能力。
 - API 后端仍需独立校验权限，前端隐藏按钮不是安全边界。
 - 插件按业务需要直接使用 Ant Design 的 `Spin`、`Empty`、`Result` 等状态组件，不依赖公共 UI 插件。
 - 正常状态保持最小 DOM；页面只为真实布局创建容器，不增加无语义的 Card 包裹。
 - 插件组件的懒加载与渲染异常由宿主统一隔离，单个插件失败不会导致 Layout 或其他插件崩溃。
-- effect 首次加载只在 Promise 回调中更新状态，不在 effect 主体同步切换 loading。
+- 订阅 channel、浏览器事件或其他副作用时必须返回清理函数；普通 GET 查询不再手写 effect。
 - 不以 `use` 开头命名普通事件函数，所有 Hook 只在组件或自定义 Hook 顶层调用。
 
 ## 7. UI 与样式规范
@@ -476,7 +543,7 @@ export default function VendorReportsPage({ runtime }: PluginComponentProps) {
 - 页面布局、响应式、间距和少量定制外观使用 Tailwind utility。
 - 图标使用 Lucide，避免插件自带一套重复图标系统。
 - 不覆盖宿主全局 `body`、`.ant-*` 或通用标签样式。
-- 插件必须在 390px 移动视口和桌面视口下无页面级横向溢出。
+- 插件必须在 375px、768px、1024px 和 1440px 视口下无页面级横向溢出或内容重叠。
 - 表格等宽内容应在自身容器内滚动。
 
 仓库内示例源码已由宿主 Tailwind 入口扫描：
@@ -487,7 +554,7 @@ export default function VendorReportsPage({ runtime }: PluginComponentProps) {
 
 外部 npm 插件有两种样式交付方式：
 
-1. 推荐由插件发布预编译 CSS，在 `fmsPlugin.style` 声明并通过 package exports 暴露；宿主会自动导入。
+1. 推荐由插件发布预编译 CSS，在 `fmsPlugin.style` 声明并通过 package exports 暴露；宿主会自动导入。Tailwind 工具类必须使用插件专属前缀，避免动态样式覆盖宿主或其他插件。
 2. 由宿主扫描插件 ESM，例如在 `apps/web/src/styles.css` 添加：
 
 ```css
@@ -496,12 +563,29 @@ export default function VendorReportsPage({ runtime }: PluginComponentProps) {
 
 第二种方式要求宿主重新构建，且插件只能使用静态、完整的 Tailwind class 字符串，禁止运行时拼接 `bg-${color}-500`。
 
+外部插件的 Tailwind 入口示例：
+
+```css
+@import 'tailwindcss/theme.css' layer(theme) prefix(vendor);
+@import 'tailwindcss/utilities.css' layer(utilities) prefix(vendor);
+
+@source './';
+```
+
+JSX 中所有 utility 同步使用前缀，前缀位于响应式或状态 variant 之前：
+
+```tsx
+<section className="vendor:grid vendor:grid-cols-1 vendor:gap-3 vendor:lg:grid-cols-2" />
+```
+
+即使多个样式文件都写入 `utilities` layer，后加载插件的裸 `.grid-cols-1` 仍可能覆盖宿主较早声明的响应式类，因此不能只依赖 layer 顺序。插件 CSS 还必须避免 preflight、通用标签、`.ant-*` 和 `body` 等全局选择器。
+
 ## 8. 仓库内联调
 
 1. 在 `plugins/<plugin-name>` 创建插件包；`pnpm-workspace.yaml` 已包含 `plugins/*`。
 2. 在插件 `package.json` 使用 `catalog:` 管理外部依赖，使用 `workspace:*` 引用 SDK 和其他内部插件契约。
 3. 运行 `pnpm install`。
-4. 在插件包 `package.json` 增加 `fmsPlugin: { "apiVersion": 1 }`。宿主会从应用依赖自动发现插件，不需要修改宿主源码。
+4. 在插件包 `package.json` 增加 `fmsPlugin: { "id": "<manifest.id>", "apiVersion": 1 }`。宿主会从应用依赖自动发现插件，不需要修改宿主源码。
 5. Mock 插件状态会根据自动发现的插件 ID 生成；只有插件有专属 API 时，才需要新增 handler 和数据。
 6. 给 Mock 账号增加页面、模块或操作需要的权限码。
 7. 按需新增 Mock handler 和数据；handler 必须再次校验 token 与权限。
@@ -583,7 +667,7 @@ pnpm --filter @fms/web add /绝对路径/vendor-fms-plugin-vendor-reports-1.0.0.
 
 然后完成以下宿主改动：
 
-1. 在宿主依赖中安装插件，并确认插件包声明 `fmsPlugin.apiVersion: 1`；无需修改源码注册表。
+1. 在宿主依赖中安装插件，并确认插件包声明与 manifest 一致的 `fmsPlugin.id` 和 `fmsPlugin.apiVersion: 1`；无需修改源码注册表。
 2. 配置插件启停初始数据和权限。
 3. 确认插件通过 `fmsPlugin.style` 暴露预编译 CSS，或在 Tailwind 入口添加 `@source`。
 4. 重新启动宿主开发服务器。
@@ -648,7 +732,7 @@ pnpm --filter @fms/web dev --host 0.0.0.0 --port 3000
 
 ### 插件中心显示“注册失败”
 
-检查 API version、重复插件 ID、重复路由 ID/路径、宿主保留路由、重复模块 ID 和未知插槽。错误原因会直接显示在插件中心。
+先按插件中心显示的阶段和错误码定位：`discovery` 检查 package 元数据，`load` 检查入口导出或顶层异常，`schema` 检查运行时结构，`compatibility` 检查包/manifest/API 版本，`contribution` 检查路由和插槽，`dependency` 检查必选插件、能力、版本范围和循环。错误插件不会阻止其他插件或宿主启动。
 
 ### 插件已安装但没有菜单
 

@@ -1,13 +1,9 @@
 import { useAuth } from '@/auth/AuthProvider';
+import { DEMO_MODE } from '@/config/environment';
 import { PluginApiError } from '@fms/plugin-sdk';
 import { Alert, Button, Card, Form, Input, Segmented, Typography } from 'antd';
 import { LockKeyhole, LogIn, UserRound } from 'lucide-react';
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-
-interface LocationState {
-  from?: string;
-}
 
 interface LoginFormValues {
   username: string;
@@ -16,8 +12,6 @@ interface LoginFormValues {
 
 export function LoginPage() {
   const { login } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
   const [form] = Form.useForm<LoginFormValues>();
   const selectedAccount = Form.useWatch('username', form);
   const [submitting, setSubmitting] = useState(false);
@@ -28,9 +22,6 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(values);
-      const state = location.state as LocationState | null;
-      const destination = state?.from?.startsWith('/') ? state.from : '/dashboard';
-      navigate(destination, { replace: true });
     } catch (reason) {
       setError(reason instanceof PluginApiError ? reason.message : '登录失败，请稍后重试');
     } finally {
@@ -45,24 +36,31 @@ export function LoginPage() {
 
   return (
     <main className="grid min-h-screen place-items-center bg-neutral-50 p-4">
-      <Card className="w-full max-w-100" title="FMS Workspace 登录">
-        <Typography.Paragraph type="secondary">选择演示账号并登录</Typography.Paragraph>
-        <Segmented
-          aria-label="演示账号"
-          block
-          className="mb-6"
-          value={selectedAccount === 'viewer' ? 'viewer' : 'admin'}
-          options={[
-            { label: '管理员', value: 'admin' },
-            { label: '普通用户', value: 'viewer' },
-          ]}
-          onChange={(value) => selectAccount(value as 'admin' | 'viewer')}
-        />
+      <Card className="w-full max-w-100">
+        <Typography.Title className="mt-0! mb-5! text-xl!" level={1}>
+          FMS Workspace 登录
+        </Typography.Title>
+        {DEMO_MODE && (
+          <>
+            <Typography.Paragraph type="secondary">选择演示账号并登录</Typography.Paragraph>
+            <Segmented
+              aria-label="演示账号"
+              block
+              className="mb-6"
+              value={selectedAccount === 'viewer' ? 'viewer' : 'admin'}
+              options={[
+                { label: '管理员', value: 'admin' },
+                { label: '普通用户', value: 'viewer' },
+              ]}
+              onChange={(value) => selectAccount(value as 'admin' | 'viewer')}
+            />
+          </>
+        )}
 
         <Form<LoginFormValues>
           form={form}
           layout="vertical"
-          initialValues={{ username: 'admin', password: 'admin123' }}
+          {...(DEMO_MODE ? { initialValues: { username: 'admin', password: 'admin123' } } : {})}
           requiredMark={false}
           onFinish={(values) => void submit(values)}
         >

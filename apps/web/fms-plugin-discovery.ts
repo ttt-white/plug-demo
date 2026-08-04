@@ -1,3 +1,4 @@
+import type { PluginDiagnostic, PluginPackageMetadata } from '@fms/plugin-sdk';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
@@ -7,15 +8,15 @@ const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 
 interface PackageJson {
   dependencies?: Record<string, string>;
-  fmsPlugin?: {
-    apiVersion?: number;
-    style?: string;
-  };
+  version?: unknown;
+  fmsPlugin?: unknown;
 }
 
 export interface DiscoveredFmsPlugin {
   packageName: string;
   packageJsonPath: string;
+  metadata: PluginPackageMetadata;
+  diagnostics: PluginDiagnostic[];
   style?: string;
 }
 
@@ -31,12 +32,61 @@ export function discoverFmsPlugins(webRoot: string): DiscoveredFmsPlugin[] {
     .flatMap((packageName) => {
       const packageJsonPath = resolve(webRoot, 'node_modules', packageName, 'package.json');
       if (!existsSync(packageJsonPath)) return [];
-      const metadata = readPackageJson(packageJsonPath).fmsPlugin;
-      if (metadata?.apiVersion !== 1) return [];
-      const style = metadata.style?.startsWith('./') ? `${packageName}/${metadata.style.slice(2)}` : metadata.style;
-      return [{ packageName, packageJsonPath, ...(style ? { style } : {}) }];
+      const packageJson = readPackageJson(packageJsonPath);
+      if (packageJson.fmsPlugin === undefined) return [];
+
+      const diagnostics: PluginDiagnostic[] = [];
+      const metadataObject =
+        typeof packageJson.fmsPlugin === 'object' && packageJson.fmsPlugin !== null
+          ? (packageJson.fmsPlugin as Record<string, unknown>)
+          : null;
+      if (!metadataObject) {
+        diagnostics.push({
+          code: 'PACKAGE_PLUGIN_METADATA_INVALID',
+          stage: 'discovery',
+          severity: 'error',
+          message: 'package.json 的 fmsPlugin 必须是对象',
+          path: 'fmsPlugin',
+        });
+      }
+
+      const rawStyle = metadataObject?.['style'];
+      if (rawStyle !== undefined && typeof rawStyle !== 'string') {
+        diagnostics.push({
+          code: 'PACKAGE_PLUGIN_STYLE_INVALID',
+          stage: 'discovery',
+          severity: 'error',
+          message: 'fmsPlugin.style 必须是字符串',
+          path: 'fmsPlugin.style',
+        });
+      }
+      const style =
+        typeof rawStyle === 'string' ? (rawStyle.startsWith('./') ? `${packageName}/${rawStyle.slice(2)}` : rawStyle) : undefined;
+      const metadata: PluginPackageMetadata = {
+        packageName,
+        packageVersion: typeof packageJson.version === 'string' ? packageJson.version : 'unknown',
+        declaredPluginId: metadataObject?.['id'],
+        declaredApiVersion: metadataObject?.['apiVersion'],
+        ...(style ? { style } : {}),
+      };
+      return [{ packageName, packageJsonPath, metadata, diagnostics, ...(style ? { style } : {}) }];
     })
     .sort((left, right) => left.packageName.localeCompare(right.packageName));
+}
+
+export function renderInstalledPluginsModule(plugins: readonly DiscoveredFmsPlugin[]) {
+  const descriptors = plugins.map((plugin) => {
+    const imports = [
+      `import(${JSON.stringify(plugin.packageName)})`,
+      ...(plugin.style ? [`import(${JSON.stringify(plugin.style)})`] : []),
+    ];
+    return `{
+      metadata: ${JSON.stringify(plugin.metadata)},
+      diagnostics: ${JSON.stringify(plugin.diagnostics)},
+      load: () => Promise.all([${imports.join(', ')}]).then(([module]) => module.plugin),
+    }`;
+  });
+  return `export const installedPluginDescriptors = [${descriptors.join(',\n')}];\n`;
 }
 
 export function fmsPluginDiscovery(webRoot: string): Plugin {
@@ -54,12 +104,7 @@ export function fmsPluginDiscovery(webRoot: string): Plugin {
       this.addWatchFile(hostPackageJsonPath);
       for (const plugin of plugins) this.addWatchFile(plugin.packageJsonPath);
 
-      const imports = plugins.flatMap((plugin, index) => [
-        ...(plugin.style ? [`import ${JSON.stringify(plugin.style)};`] : []),
-        `import { plugin as plugin${index} } from ${JSON.stringify(plugin.packageName)};`,
-      ]);
-      const identifiers = plugins.map((_, index) => `plugin${index}`).join(', ');
-      return `${imports.join('\n')}\nexport const installedPlugins = [${identifiers}];\n`;
+      return renderInstalledPluginsModule(plugins);
     },
     handleHotUpdate({ file, server }) {
       const watchedPackageJsonFiles = new Set([

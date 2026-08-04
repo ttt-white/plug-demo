@@ -10,13 +10,14 @@ export const plugin: WorkspacePlugin = {
     version: '1.0.0',
     apiVersion: PLUGIN_API_VERSION,
     description: '提供独立路由的履约明细与筛选能力。',
+    provides: { capabilities: [{ id: 'reports.filter-carrier', version: '1.0.0' }] },
   },
   routes: [
     {
       id: twoContract.routes.two.routeId,
       path: twoContract.routes.two.path,
       permission: 'reports:view',
-      menu: { label: 'two', icon: 'chart-no-axes-column', order: 30 },
+      menu: { label: '履约报表', icon: 'chart-no-axes-column', order: 30 },
       load: () => import('./TwoPage'),
     },
   ],

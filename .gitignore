@@ -37,3 +37,7 @@ coverage
 *.sw?
 *.eslintcache
 *.tsbuildinfo
+
+# Python caches created by local tooling
+__pycache__/
+*.py[cod]

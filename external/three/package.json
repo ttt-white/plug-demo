@@ -64,6 +64,7 @@
   },
   "packageManager": "pnpm@10.30.3",
   "fmsPlugin": {
+    "id": "three",
     "apiVersion": 1,
     "style": "./styles.css"
   }

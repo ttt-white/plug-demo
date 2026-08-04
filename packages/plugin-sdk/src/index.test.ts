@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   PLUGIN_API_VERSION,
   createPluginChannelBus,
+  loadPluginRegistrations,
   sortModuleContributions,
   validatePlugins,
-  type PluginComponentProps,
   type PluginChannelReference,
+  type PluginComponentProps,
+  type PluginPackageDescriptor,
   type PluginPublicChannelReference,
   type WorkspacePlugin,
 } from './index';
@@ -156,6 +158,158 @@ describe('validatePlugins', () => {
 
     expect(validatePlugins([two, three], options).every((registration) => registration.status === 'error')).toBe(true);
   });
+
+  it('returns schema diagnostics instead of throwing for arbitrary runtime values', () => {
+    const invalidLoader = createPlugin('invalid-loader') as unknown as Record<string, unknown>;
+    invalidLoader['modules'] = [
+      { id: 'invalid-loader.module', routeId: 'dashboard', slotId: 'dashboard.metrics', load: 'not-a-function' },
+    ];
+
+    expect(() => validatePlugins([null, {}, invalidLoader], options)).not.toThrow();
+    const registrations = validatePlugins([null, {}, invalidLoader], options);
+    expect(registrations).toHaveLength(3);
+    expect(registrations.every((registration) => registration.status === 'error')).toBe(true);
+    expect(registrations[0]?.diagnostics[0]).toMatchObject({ code: 'PLUGIN_SCHEMA_INVALID', stage: 'schema' });
+    expect(registrations[2]?.diagnostics.some((diagnostic) => diagnostic.path === 'modules.0.load')).toBe(true);
+  });
+
+  it('validates package and manifest identity consistently', async () => {
+    const plugin = createPlugin('identity');
+    const registrations = await loadPluginRegistrations(
+      [
+        {
+          metadata: {
+            packageName: '@fms/plugin-identity',
+            packageVersion: '2.0.0',
+            declaredPluginId: 'other-id',
+            declaredApiVersion: PLUGIN_API_VERSION,
+          },
+          load: async () => plugin,
+        },
+      ],
+      options,
+    );
+
+    expect(registrations[0]).toMatchObject({ status: 'error', source: { packageName: '@fms/plugin-identity' } });
+    expect(registrations[0]?.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(
+      expect.arrayContaining(['PACKAGE_PLUGIN_ID_MISMATCH', 'PACKAGE_VERSION_MISMATCH']),
+    );
+  });
+
+  it('isolates loading, missing exports and incompatible package metadata', async () => {
+    const compatibleLoad = vi.fn(async () => createPlugin('ready'));
+    const incompatibleLoad = vi.fn(async () => createPlugin('future'));
+    const descriptors: PluginPackageDescriptor[] = [
+      {
+        metadata: {
+          packageName: '@fms/plugin-ready',
+          packageVersion: '1.0.0',
+          declaredPluginId: 'ready',
+          declaredApiVersion: PLUGIN_API_VERSION,
+        },
+        load: compatibleLoad,
+      },
+      {
+        metadata: {
+          packageName: '@fms/plugin-broken',
+          packageVersion: '1.0.0',
+          declaredPluginId: 'broken',
+          declaredApiVersion: PLUGIN_API_VERSION,
+        },
+        load: async () => {
+          throw new Error('top-level failed');
+        },
+      },
+      {
+        metadata: {
+          packageName: '@fms/plugin-missing-export',
+          packageVersion: '1.0.0',
+          declaredPluginId: 'missing-export',
+          declaredApiVersion: PLUGIN_API_VERSION,
+        },
+        load: async () => undefined,
+      },
+      {
+        metadata: {
+          packageName: '@fms/plugin-future',
+          packageVersion: '1.0.0',
+          declaredPluginId: 'future',
+          declaredApiVersion: 2,
+        },
+        load: incompatibleLoad,
+      },
+    ];
+
+    const registrations = await loadPluginRegistrations(descriptors, options);
+    expect(registrations.map((registration) => registration.source.packageName)).toEqual(
+      descriptors.map((descriptor) => descriptor.metadata.packageName),
+    );
+    expect(registrations.map((registration) => registration.status)).toEqual(['ready', 'error', 'error', 'error']);
+    expect(registrations[1]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'PLUGIN_LOAD_FAILED', stage: 'load' })]),
+    );
+    expect(registrations[2]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'PLUGIN_SCHEMA_INVALID', stage: 'schema' })]),
+    );
+    expect(registrations[3]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'PACKAGE_API_VERSION_UNSUPPORTED', stage: 'compatibility' })]),
+    );
+    expect(compatibleLoad).toHaveBeenCalledOnce();
+    expect(incompatibleLoad).not.toHaveBeenCalled();
+  });
+
+  it('enforces required plugin versions while keeping missing optional plugins as warnings', () => {
+    const provider = createPlugin('provider');
+    const required = createPlugin('required');
+    required.manifest.requires = { plugins: [{ id: 'provider', range: '^2.0.0' }] };
+    const optional = createPlugin('optional');
+    optional.manifest.requires = { plugins: [{ id: 'missing', range: '^1.0.0', optional: true }] };
+
+    const registrations = validatePlugins([provider, required, optional], options);
+    expect(registrations[1]).toMatchObject({ status: 'error' });
+    expect(registrations[1]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'REQUIRED_PLUGIN_VERSION_UNSATISFIED' })]),
+    );
+    expect(registrations[2]).toMatchObject({ status: 'ready', errors: [] });
+    expect(registrations[2]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'REQUIRED_PLUGIN_MISSING', severity: 'warning' })]),
+    );
+  });
+
+  it('detects required dependency cycles and propagates an unavailable target', () => {
+    const first = createPlugin('first');
+    const second = createPlugin('second');
+    first.manifest.requires = { plugins: [{ id: 'second', range: '^1.0.0' }] };
+    second.manifest.requires = { plugins: [{ id: 'first', range: '^1.0.0' }] };
+    const consumer = createPlugin('consumer');
+    consumer.manifest.requires = { plugins: [{ id: 'first', range: '^1.0.0' }] };
+
+    const registrations = validatePlugins([first, second, consumer], options);
+    expect(registrations[0]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'PLUGIN_DEPENDENCY_CYCLE' })]),
+    );
+    expect(registrations[1]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'PLUGIN_DEPENDENCY_CYCLE' })]),
+    );
+    expect(registrations[2]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'REQUIRED_PLUGIN_UNAVAILABLE' })]),
+    );
+  });
+
+  it('resolves versioned capabilities and rejects a capability whose provider is invalid', () => {
+    const provider = createPlugin('provider');
+    provider.manifest.provides = { capabilities: [{ id: 'reports.filter', version: '1.1.0' }] };
+    const consumer = createPlugin('consumer');
+    consumer.manifest.requires = { capabilities: [{ id: 'reports.filter', range: '^1.0.0' }] };
+    expect(validatePlugins([provider, consumer], options).every((registration) => registration.status === 'ready')).toBe(true);
+
+    provider.routes = [{ id: 'invalid', path: '/login', permission: 'invalid:view', menu: { label: 'Invalid', order: 1 }, load }];
+    const registrations = validatePlugins([provider, consumer], options);
+    expect(registrations[0]?.status).toBe('error');
+    expect(registrations[1]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'REQUIRED_CAPABILITY_UNAVAILABLE' })]),
+    );
+  });
 });
 
 describe('createPluginChannelBus', () => {
@@ -191,6 +345,23 @@ describe('createPluginChannelBus', () => {
     expect(() => bus.forPlugin('three').publish('two', 'refresh', undefined)).not.toThrow();
     expect(healthyListener).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
+  });
+
+  it('isolates a rejected async channel subscriber without interrupting healthy subscribers', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const bus = createPluginChannelBus();
+    const healthyListener = vi.fn();
+    bus.forPlugin('two').subscribe('refresh', async () => {
+      await Promise.resolve();
+      throw new Error('async subscriber failed');
+    });
+    bus.forPlugin('two').subscribe('refresh', healthyListener);
+
+    bus.forPlugin('three').publish('two', 'refresh', undefined);
+    expect(healthyListener).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(error).toHaveBeenCalledOnce());
+    expect(error).toHaveBeenCalledWith('插件定向通道处理失败：three -> two/refresh', expect.any(Error));
     error.mockRestore();
   });
 

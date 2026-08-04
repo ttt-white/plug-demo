@@ -18,8 +18,13 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "semver": "catalog:",
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@types/react": "catalog:",
+    "@types/semver": "catalog:",
     "react": "catalog:"
   },
   "peerDependencies": {

@@ -1,4 +1,18 @@
 import type { ComponentType, ReactNode } from 'react';
+import type { PluginQueryClient } from './query';
+
+export {
+  serializePluginQueryKey,
+  usePluginQuery,
+  type PluginQueryClient,
+  type PluginQueryFunctionContext,
+  type PluginQueryKey,
+  type PluginQueryKeyPart,
+  type PluginQueryObserver,
+  type PluginQueryOptions,
+  type PluginQuerySchema,
+  type PluginQuerySnapshot,
+} from './query';
 
 /** 当前宿主与插件共同支持的协议版本。 */
 export const PLUGIN_API_VERSION = 1 as const;
@@ -90,15 +104,18 @@ export interface PluginChannel {
   /** 使用目标插件 ID 和主题发布消息，主要用于兼容动态场景。 */
   publish<T>(targetPluginId: string, topic: string, payload: T): void;
   /** 订阅 contract 中属于当前插件的类型化通道，并返回取消订阅函数。 */
-  subscribe<T>(channel: PluginChannelReference<T>, listener: (payload: T, context: PluginChannelContext) => void): () => void;
+  subscribe<T>(
+    channel: PluginChannelReference<T>,
+    listener: (payload: T, context: PluginChannelContext) => void | Promise<void>,
+  ): () => void;
   /** 按主题订阅当前插件的通道，并返回取消订阅函数。 */
-  subscribe<T>(topic: string, listener: (payload: T, context: PluginChannelContext) => void): () => void;
+  subscribe<T>(topic: string, listener: (payload: T, context: PluginChannelContext) => void | Promise<void>): () => void;
   /** 向所有订阅该公共 contract 通道的插件广播消息。 */
   publishPublic<T>(channel: PluginPublicChannelReference<T>, payload: NoInfer<T>): void;
   /** 订阅公共 contract 通道，并返回取消订阅函数。 */
   subscribePublic<T>(
     channel: PluginPublicChannelReference<T>,
-    listener: (payload: T, context: PluginChannelContext) => void,
+    listener: (payload: T, context: PluginChannelContext) => void | Promise<void>,
   ): () => void;
 }
 
@@ -108,7 +125,7 @@ export interface PluginChannelBus {
   forPlugin(pluginId: string): PluginChannel;
 }
 
-type PluginChannelListener = (payload: unknown, context: PluginChannelContext) => void;
+type PluginChannelListener = (payload: unknown, context: PluginChannelContext) => void | Promise<void>;
 
 function requiredChannelName(value: string, label: string) {
   const normalized = value.trim();
@@ -123,6 +140,10 @@ export function createPluginChannelBus(): PluginChannelBus {
   const channels = new Map<string, PluginChannel>();
   const channelKey = (pluginId: string, topic: string) => `${pluginId}\0${topic}`;
 
+  function reportDeliveryFailure(failureLabel: string, error: unknown) {
+    console.error(failureLabel, error);
+  }
+
   function deliver(
     subscribers: Set<PluginChannelListener> | undefined,
     message: unknown,
@@ -132,9 +153,10 @@ export function createPluginChannelBus(): PluginChannelBus {
     if (!subscribers) return;
     for (const subscriber of subscribers) {
       try {
-        subscriber(message, context);
+        const result = subscriber(message, context);
+        if (result) void result.catch((error) => reportDeliveryFailure(failureLabel, error));
       } catch (error) {
-        console.error(failureLabel, error);
+        reportDeliveryFailure(failureLabel, error);
       }
     }
   }
@@ -164,12 +186,15 @@ export function createPluginChannelBus(): PluginChannelBus {
 
       function subscribe<T>(
         channel: PluginChannelReference<T>,
-        listener: (payload: T, context: PluginChannelContext) => void,
+        listener: (payload: T, context: PluginChannelContext) => void | Promise<void>,
       ): () => void;
-      function subscribe<T>(topic: string, listener: (payload: T, context: PluginChannelContext) => void): () => void;
+      function subscribe<T>(
+        topic: string,
+        listener: (payload: T, context: PluginChannelContext) => void | Promise<void>,
+      ): () => void;
       function subscribe<T>(
         topicOrChannel: string | PluginChannelReference<T>,
-        listener: (payload: T, context: PluginChannelContext) => void,
+        listener: (payload: T, context: PluginChannelContext) => void | Promise<void>,
       ) {
         if (typeof topicOrChannel !== 'string') {
           const targetPluginId = requiredChannelName(topicOrChannel.pluginId, '通道插件 ID');
@@ -200,7 +225,7 @@ export function createPluginChannelBus(): PluginChannelBus {
 
       function subscribePublic<T>(
         channel: PluginPublicChannelReference<T>,
-        listener: (payload: T, context: PluginChannelContext) => void,
+        listener: (payload: T, context: PluginChannelContext) => void | Promise<void>,
       ) {
         const topic = requiredChannelName(channel.topic, '公共通道主题');
         const subscribers = publicListeners.get(topic) ?? new Set<PluginChannelListener>();
@@ -250,7 +275,15 @@ export interface PluginExtensionRuntime {
   /** 获取其他插件贡献给指定页面的类型化入口。 */
   routesFor(route: PluginRouteReference): readonly PluginExtensionRoute[];
   /** 导航到 contract 指定的插件页面；实际 URL 由宿主注册表解析。 */
-  navigateTo(route: PluginRouteReference): void;
+  navigateTo(route: PluginRouteReference, options?: PluginNavigationOptions): void;
+}
+
+/** 类型化路由导航时可附加的 URL 状态。 */
+export interface PluginNavigationOptions {
+  /** 合并到目标 URL 的查询参数；null/undefined 会删除同名参数。 */
+  search?: Readonly<Record<string, string | number | boolean | null | undefined>>;
+  /** 不创建新的浏览器历史记录。 */
+  replace?: boolean;
 }
 
 /** 宿主传给每个插件组件的完整运行时上下文。 */
@@ -259,6 +292,8 @@ export interface PluginRuntime {
   pluginId: string;
   /** 自动附带 Bearer token 的 API Client。 */
   api: PluginApiClient;
+  /** 宿主级共享查询缓存；相同 query key 会跨插件去重。 */
+  query: PluginQueryClient;
   /** 当前登录用户。 */
   user: PluginUser;
   /** 判断当前用户是否拥有指定权限码。 */
@@ -279,6 +314,38 @@ export interface PluginComponentProps {
 export type PluginComponentLoader = () => Promise<{ default: ComponentType<PluginComponentProps> }>;
 
 /** 插件包的基础身份与协议兼容信息。 */
+export interface PluginVersionRequirement {
+  /** 插件 ID 或能力 ID。 */
+  id: string;
+  /** 接受的 SemVer 范围，例如 `^1.0.0`。 */
+  range: string;
+  /** 可选依赖不可用时只产生警告，不阻止插件注册。 */
+  optional?: boolean;
+}
+
+/** 插件对外提供的一项带版本能力。 */
+export interface PluginCapabilityDeclaration {
+  /** 工作区内稳定的能力 ID。 */
+  id: string;
+  /** 能力的 SemVer 版本。 */
+  version: string;
+}
+
+/** 插件运行所需的插件和能力。 */
+export interface PluginManifestRequirements {
+  /** 直接依赖的插件及版本范围。 */
+  plugins?: PluginVersionRequirement[];
+  /** 依赖的抽象能力及版本范围。 */
+  capabilities?: PluginVersionRequirement[];
+}
+
+/** 插件向工作区公开的能力。 */
+export interface PluginManifestProvides {
+  /** 可被其他插件按版本发现的能力。 */
+  capabilities?: PluginCapabilityDeclaration[];
+}
+
+/** 插件包的基础身份与协议兼容信息。 */
 export interface PluginManifest {
   /** 全工作区唯一且稳定的插件 ID。 */
   id: string;
@@ -290,6 +357,10 @@ export interface PluginManifest {
   apiVersion: typeof PLUGIN_API_VERSION;
   /** 插件用途说明。 */
   description?: string;
+  /** 插件运行所需的插件和能力。 */
+  requires?: PluginManifestRequirements;
+  /** 插件向工作区提供的能力。 */
+  provides?: PluginManifestProvides;
 }
 
 /**
@@ -415,119 +486,72 @@ export interface PluginValidationOptions {
   knownSlots: Readonly<Record<string, readonly string[]>>;
 }
 
-/** 单个插件的注册结果，错误插件不会参与菜单、路由和模块渲染。 */
-export interface PluginRegistration {
-  /** 被校验的原始插件对象。 */
-  plugin: WorkspacePlugin;
-  /** `ready` 表示可启用，`error` 表示注册失败。 */
-  status: 'ready' | 'error';
-  /** 注册阶段发现的全部错误原因。 */
+/** 插件包在构建期发现的身份元数据。 */
+export interface PluginPackageMetadata {
+  /** npm 包名。 */
+  packageName: string;
+  /** package.json 版本。 */
+  packageVersion: string;
+  /** package.json `fmsPlugin.id` 的原始值。 */
+  declaredPluginId?: unknown;
+  /** package.json `fmsPlugin.apiVersion` 的原始值。 */
+  declaredApiVersion?: unknown;
+  /** package.json 声明的插件样式入口。 */
+  style?: string;
+}
+
+/** 插件注册诊断所属阶段。 */
+export type PluginDiagnosticStage = 'discovery' | 'load' | 'schema' | 'compatibility' | 'contribution' | 'dependency';
+
+/** 可由插件中心和日志系统消费的结构化注册诊断。 */
+export interface PluginDiagnostic {
+  /** 稳定错误码。 */
+  code: string;
+  /** 产生诊断的注册阶段。 */
+  stage: PluginDiagnosticStage;
+  /** 错误阻止注册，警告仅用于运维提示。 */
+  severity: 'error' | 'warning';
+  /** 面向开发者和管理员的可读说明。 */
+  message: string;
+  /** manifest 或贡献中的字段路径。 */
+  path?: string;
+}
+
+/** Vite 发现器交给宿主的惰性插件包描述符。 */
+export interface PluginPackageDescriptor {
+  /** 不执行插件代码即可读取的包元数据。 */
+  metadata: PluginPackageMetadata;
+  /** 发现阶段已经识别出的元数据问题。 */
+  diagnostics?: readonly PluginDiagnostic[];
+  /** 动态加载插件对象和样式；失败只影响当前描述符。 */
+  load(): Promise<unknown>;
+}
+
+interface PluginRegistrationBase {
+  /** 注册结果对应的 npm 包。 */
+  source: PluginPackageMetadata;
+  /** 跨阶段结构化诊断。 */
+  diagnostics: PluginDiagnostic[];
+  /** 兼容旧调用方的错误文案列表。 */
   errors: string[];
 }
 
-function contributionDuplicates(plugins: readonly WorkspacePlugin[], selectIds: (plugin: WorkspacePlugin) => string[]) {
-  const counts = new Map<string, number>();
-  for (const plugin of plugins) {
-    for (const id of selectIds(plugin)) counts.set(id, (counts.get(id) ?? 0) + 1);
-  }
-  return new Set([...counts].filter(([, count]) => count > 1).map(([id]) => id));
+/** 校验成功且可以参与路由、菜单和模块解析的插件。 */
+export interface ReadyPluginRegistration extends PluginRegistrationBase {
+  status: 'ready';
+  plugin: WorkspacePlugin;
 }
 
-/** 校验所有已安装插件及其跨插件贡献，返回与输入顺序一致的注册结果。 */
-export function validatePlugins(plugins: readonly WorkspacePlugin[], options: PluginValidationOptions): PluginRegistration[] {
-  const pluginIdDuplicates = contributionDuplicates(plugins, (plugin) => [plugin.manifest.id]);
-  const routeIdDuplicates = contributionDuplicates(plugins, (plugin) => plugin.routes?.map((route) => route.id) ?? []);
-  const routePathDuplicates = contributionDuplicates(plugins, (plugin) => plugin.routes?.map((route) => route.path) ?? []);
-  const routeLinkIdDuplicates = contributionDuplicates(
-    plugins,
-    (plugin) => plugin.routeLinks?.map((routeLink) => routeLink.id) ?? [],
-  );
-  const moduleIdDuplicates = contributionDuplicates(plugins, (plugin) => plugin.modules?.map((module) => module.id) ?? []);
-  const reservedPaths = new Set(options.reservedPaths);
-
-  const pluginsById = new Map<string, WorkspacePlugin[]>();
-  const routesByTarget = new Map<string, Array<{ plugin: WorkspacePlugin; route: PluginRouteContribution }>>();
-  for (const plugin of plugins) {
-    pluginsById.set(plugin.manifest.id, [...(pluginsById.get(plugin.manifest.id) ?? []), plugin]);
-    for (const route of plugin.routes ?? []) {
-      const key = `${plugin.manifest.id}\0${route.id}`;
-      routesByTarget.set(key, [...(routesByTarget.get(key) ?? []), { plugin, route }]);
-    }
-  }
-
-  return plugins.map((plugin) => {
-    const errors: string[] = [];
-    const { manifest } = plugin;
-
-    if (!manifest.id.trim()) errors.push('插件 ID 不能为空');
-    if (!manifest.name.trim()) errors.push('插件名称不能为空');
-    if ((manifest.apiVersion as number) !== PLUGIN_API_VERSION) errors.push(`不支持的 API 版本：${String(manifest.apiVersion)}`);
-    if (pluginIdDuplicates.has(manifest.id)) errors.push(`插件 ID 重复：${manifest.id}`);
-
-    const seenExtensionSlots = new Set<string>();
-    for (const slot of plugin.extensionSlots ?? []) {
-      const key = `${slot.routeId}\0${slot.id}`;
-      if (seenExtensionSlots.has(key)) errors.push(`扩展插槽重复：${slot.routeId}/${slot.id}`);
-      seenExtensionSlots.add(key);
-      if (!slot.id.trim()) errors.push('扩展插槽 ID 不能为空');
-
-      const ownsRoute = plugin.routes?.some((route) => route.id === slot.routeId);
-      const usesHostRoute = Object.hasOwn(options.knownSlots, slot.routeId);
-      if (!ownsRoute && !usesHostRoute) errors.push(`扩展插槽使用未知路由：${slot.routeId}/${slot.id}`);
-
-      if (slot.ownerModuleId) {
-        const ownerModule = plugin.modules?.find((module) => module.id === slot.ownerModuleId);
-        if (!ownerModule) errors.push(`扩展插槽所属模块不存在：${slot.ownerModuleId}`);
-        else if (ownerModule.routeId !== slot.routeId) errors.push(`扩展插槽与所属模块路由不一致：${slot.id}`);
-      }
-    }
-
-    for (const route of plugin.routes ?? []) {
-      if (!route.path.startsWith('/')) errors.push(`路由必须使用绝对路径：${route.path}`);
-      if (reservedPaths.has(route.path)) errors.push(`路由为宿主保留路由：${route.path}`);
-      if (routeIdDuplicates.has(route.id)) errors.push(`路由 ID 重复：${route.id}`);
-      if (routePathDuplicates.has(route.path)) errors.push(`路由路径重复：${route.path}`);
-      if (!route.permission.trim()) errors.push(`路由缺少权限码：${route.id}`);
-    }
-
-    for (const routeLink of plugin.routeLinks ?? []) {
-      if (!routeLink.id.trim()) errors.push('路由入口 ID 不能为空');
-      if (routeLinkIdDuplicates.has(routeLink.id)) errors.push(`路由入口 ID 重复：${routeLink.id}`);
-      const parentTargets = routesByTarget.get(`${routeLink.parentRoute.pluginId}\0${routeLink.parentRoute.routeId}`) ?? [];
-      if (parentTargets.length !== 1) {
-        errors.push(`父路由不存在或不唯一：${routeLink.parentRoute.pluginId}/${routeLink.parentRoute.routeId}`);
-      }
-      const targetRoutes = routesByTarget.get(`${routeLink.targetRoute.pluginId}\0${routeLink.targetRoute.routeId}`) ?? [];
-      if (targetRoutes.length !== 1) {
-        errors.push(`跳转路由不存在或不唯一：${routeLink.targetRoute.pluginId}/${routeLink.targetRoute.routeId}`);
-      }
-      if (routeLink.permission !== undefined && !routeLink.permission.trim()) {
-        errors.push(`路由入口权限码不能为空：${routeLink.id}`);
-      }
-    }
-
-    for (const module of plugin.modules ?? []) {
-      if (moduleIdDuplicates.has(module.id)) errors.push(`模块 ID 重复：${module.id}`);
-      if (module.targetPluginId) {
-        const targetPlugins = pluginsById.get(module.targetPluginId) ?? [];
-        if (targetPlugins.length !== 1) {
-          errors.push(`目标插件不存在或不唯一：${module.targetPluginId}`);
-        } else {
-          const targetPlugin = targetPlugins[0];
-          const targetSlot = targetPlugin?.extensionSlots?.some(
-            (slot) => slot.routeId === module.routeId && slot.id === module.slotId,
-          );
-          if (!targetSlot) errors.push(`目标插件未开放插槽：${module.targetPluginId}/${module.routeId}/${module.slotId}`);
-        }
-      } else {
-        const slots = options.knownSlots[module.routeId];
-        if (!slots?.includes(module.slotId)) errors.push(`未知插槽：${module.routeId}/${module.slotId}`);
-      }
-    }
-
-    return { plugin, status: errors.length === 0 ? 'ready' : 'error', errors };
-  });
+/** 加载或校验失败、不会参与运行时解析的插件。 */
+export interface FailedPluginRegistration extends PluginRegistrationBase {
+  status: 'error';
+  plugin: WorkspacePlugin | null;
 }
+
+/** 单个插件包的完整注册结果。 */
+export type PluginRegistration = ReadyPluginRegistration | FailedPluginRegistration;
+
+export { loadPluginRegistrations, validatePlugins } from './plugin-validation';
 
 /** 按优先级降序、模块 ID 升序返回新的模块贡献数组。 */
 export function sortModuleContributions(modules: readonly PluginModuleContribution[]): PluginModuleContribution[] {

@@ -4,3 +4,4 @@
 **/*.sh
 /public/*
 /src/assets/*
+**/pnpm-lock.yaml

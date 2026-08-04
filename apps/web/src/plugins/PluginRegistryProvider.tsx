@@ -1,22 +1,25 @@
+import { HOST_ROUTES, HOST_SLOTS } from '@/app/route-catalog';
+import { useAuth } from '@/auth/AuthProvider';
+import { apiClient } from '@/services/api-client';
+import { createWorkspaceQueryClient } from '@/services/query-client';
 import {
   createPluginChannelBus,
-  validatePlugins,
+  loadPluginRegistrations,
   type PluginExtensionRoute,
   type PluginExtensionRuntime,
   type PluginModuleContribution,
+  type PluginQueryClient,
   type PluginRegistration,
   type PluginRouteContribution,
   type PluginRuntime,
+  type ReadyPluginRegistration,
   type WorkspacePlugin,
 } from '@fms/plugin-sdk';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { installedPlugins } from 'virtual:fms-installed-plugins';
-import { useAuth } from '@/auth/AuthProvider';
-import { apiClient } from '@/services/api-client';
+import { installedPluginDescriptors } from 'virtual:fms-installed-plugins';
 
-export const HOST_ROUTES = ['/login', '/dashboard', '/plugins'] as const;
-export const HOST_SLOTS = { dashboard: ['dashboard.metrics'] } as const;
+export { HOST_ROUTES, HOST_SLOTS } from '@/app/route-catalog';
 
 export interface ResolvedRoute {
   plugin: WorkspacePlugin;
@@ -28,59 +31,120 @@ export interface ResolvedModule {
   contribution: PluginModuleContribution;
 }
 
-interface PluginState {
+export interface PluginState {
   id: string;
   enabled: boolean;
 }
 
-interface LoadedPluginStates {
-  owner: NonNullable<ReturnType<typeof useAuth>['user']>;
-  states: PluginState[];
-}
+export type PluginStatesState =
+  | { status: 'idle'; states: PluginState[]; error: null }
+  | { status: 'loading'; states: PluginState[]; error: null }
+  | { status: 'ready'; states: PluginState[]; error: null }
+  | { status: 'error'; states: PluginState[]; error: string };
+
+type OwnedPluginStatesState = PluginStatesState & { ownerId: string | null };
 
 interface PluginRegistryContextValue {
   registrations: PluginRegistration[];
   states: PluginState[];
+  statesState: PluginStatesState;
   loading: boolean;
   routes: ResolvedRoute[];
+  query: PluginQueryClient;
   modulesFor(routeId: string, slotId: string, targetPluginId?: string): ResolvedModule[];
   runtimeFor(pluginId: string, renderSlot: PluginExtensionRuntime['renderSlot']): PluginRuntime | null;
+  reloadStates(): Promise<void>;
   setEnabled(id: string, enabled: boolean): Promise<void>;
 }
 
 const PluginRegistryContext = createContext<PluginRegistryContextValue | null>(null);
-const registrations = validatePlugins(installedPlugins, { reservedPaths: HOST_ROUTES, knownSlots: HOST_SLOTS });
 const EMPTY_PLUGIN_STATES: PluginState[] = [];
+const IDLE_PLUGIN_STATES: PluginStatesState = { status: 'idle', states: EMPTY_PLUGIN_STATES, error: null };
+const PLUGIN_VALIDATION_OPTIONS = { reservedPaths: HOST_ROUTES, knownSlots: HOST_SLOTS } as const;
+
+function errorMessage(reason: unknown) {
+  return reason instanceof Error ? reason.message : '无法读取插件状态';
+}
 
 export function PluginRegistryProvider({ children }: { children: ReactNode }) {
   const { user, can } = useAuth();
   const navigate = useNavigate();
-  const [loaded, setLoaded] = useState<LoadedPluginStates | null>(null);
+  const [ownedStates, setOwnedStates] = useState<OwnedPluginStatesState>({
+    ownerId: null,
+    status: 'idle',
+    states: EMPTY_PLUGIN_STATES,
+    error: null,
+  });
+  const [registrations, setRegistrations] = useState<PluginRegistration[]>([]);
+  const [registrationsLoading, setRegistrationsLoading] = useState(true);
+  const stateRequestSequence = useRef(0);
   const channelBus = useMemo(() => createPluginChannelBus(), []);
+  const query = useMemo(() => createWorkspaceQueryClient(user?.id ?? null), [user?.id]);
+
+  useEffect(() => () => query.clear(), [query]);
 
   useEffect(() => {
-    if (!user) return;
     let active = true;
-    void apiClient
-      .get<{ plugins: PluginState[] }>('/api/plugins')
-      .then((response) => {
-        if (active) setLoaded({ owner: user, states: response.plugins });
-      })
-      .catch(() => {
-        if (active) setLoaded({ owner: user, states: [] });
-      });
+    void loadPluginRegistrations(installedPluginDescriptors, PLUGIN_VALIDATION_OPTIONS).then((nextRegistrations) => {
+      if (!active) return;
+      setRegistrations(nextRegistrations);
+      setRegistrationsLoading(false);
+    });
     return () => {
       active = false;
     };
+  }, []);
+
+  const reloadStates = useCallback(async () => {
+    if (!user) return;
+    const ownerId = user.id;
+    const requestSequence = ++stateRequestSequence.current;
+    setOwnedStates((current) => ({
+      ownerId,
+      status: 'loading',
+      states: current.ownerId === ownerId ? current.states : EMPTY_PLUGIN_STATES,
+      error: null,
+    }));
+    try {
+      const response = await apiClient.get<{ plugins: PluginState[] }>('/api/plugins');
+      if (requestSequence !== stateRequestSequence.current) return;
+      setOwnedStates({ ownerId, status: 'ready', states: response.plugins, error: null });
+    } catch (reason) {
+      if (requestSequence !== stateRequestSequence.current) return;
+      setOwnedStates((current) => ({
+        ownerId,
+        status: 'error',
+        states: current.ownerId === ownerId ? current.states : EMPTY_PLUGIN_STATES,
+        error: errorMessage(reason),
+      }));
+    }
   }, [user]);
 
-  const states = loaded?.owner === user ? loaded.states : EMPTY_PLUGIN_STATES;
-  const loading = Boolean(user && loaded?.owner !== user);
+  useEffect(() => {
+    if (!user) return;
+    void reloadStates();
+    return () => {
+      stateRequestSequence.current += 1;
+    };
+  }, [reloadStates, user]);
+
+  const statesState = useMemo<PluginStatesState>(() => {
+    if (!user || ownedStates.ownerId !== user.id) return IDLE_PLUGIN_STATES;
+    const { ownerId: _, ...current } = ownedStates;
+    return current;
+  }, [ownedStates, user]);
+  const states = statesState.states;
+  const loading =
+    registrationsLoading ||
+    Boolean(user && (statesState.status === 'idle' || (statesState.status === 'loading' && statesState.states.length === 0)));
   const enabledIds = useMemo(() => new Set(states.filter((state) => state.enabled).map((state) => state.id)), [states]);
   const activeRegistrations = useMemo(
     () =>
-      registrations.filter((registration) => registration.status === 'ready' && enabledIds.has(registration.plugin.manifest.id)),
-    [enabledIds],
+      registrations.filter(
+        (registration): registration is ReadyPluginRegistration =>
+          registration.status === 'ready' && enabledIds.has(registration.plugin.manifest.id),
+      ),
+    [enabledIds, registrations],
   );
 
   const routes = useMemo(
@@ -108,8 +172,10 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     () => ({
       registrations,
       states,
+      statesState,
       loading,
       routes,
+      query,
       modulesFor(routeId, slotId, targetPluginId) {
         return activeRegistrations
           .flatMap((registration) =>
@@ -134,6 +200,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
         return {
           pluginId,
           api: apiClient,
+          query,
           user,
           can,
           channel: channelBus.forPlugin(pluginId),
@@ -169,21 +236,45 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
                 })
                 .sort((left, right) => left.order - right.order || left.pluginId.localeCompare(right.pluginId));
             },
-            navigateTo(route) {
+            navigateTo(route, options) {
               const target = routes.find(
                 ({ plugin, contribution }) => plugin.manifest.id === route.pluginId && contribution.id === route.routeId,
               );
-              if (target && can(target.contribution.permission)) void navigate(target.contribution.path);
+              if (!target || !can(target.contribution.permission)) return;
+              const search = new URLSearchParams();
+              for (const [key, value] of Object.entries(options?.search ?? {})) {
+                if (value !== null && value !== undefined) search.set(key, String(value));
+              }
+              const destination = search.size ? `${target.contribution.path}?${search.toString()}` : target.contribution.path;
+              void navigate(destination, options?.replace === undefined ? {} : { replace: options.replace });
             },
           },
         };
       },
+      reloadStates,
       async setEnabled(id, enabled) {
         const response = await apiClient.patch<{ plugins: PluginState[] }>(`/api/plugins/${id}`, { enabled });
-        if (user) setLoaded({ owner: user, states: response.plugins });
+        if (user) {
+          stateRequestSequence.current += 1;
+          setOwnedStates({ ownerId: user.id, status: 'ready', states: response.plugins, error: null });
+        }
       },
     }),
-    [activeRegistrations, can, channelBus, loading, navigate, routeLinks, routes, states, user],
+    [
+      activeRegistrations,
+      can,
+      channelBus,
+      loading,
+      navigate,
+      query,
+      registrations,
+      reloadStates,
+      routeLinks,
+      routes,
+      states,
+      statesState,
+      user,
+    ],
   );
 
   return <PluginRegistryContext.Provider value={value}>{children}</PluginRegistryContext.Provider>;
