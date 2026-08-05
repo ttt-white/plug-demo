@@ -1,31 +1,17 @@
 import { useAuth } from '@/auth/AuthProvider';
 import { usePluginRegistry } from '@/plugins/PluginRegistryProvider';
 import { Alert, Button, Dropdown, Layout, Menu, type MenuProps } from 'antd';
-import {
-  BadgeCheck,
-  Blocks,
-  Boxes,
-  ChartNoAxesColumn,
-  Ellipsis,
-  House,
-  LogOut,
-  Puzzle,
-  RefreshCw,
-  UserRound,
-  type LucideIcon,
-} from 'lucide-react';
+import { BadgeCheck, Blocks, Boxes, Ellipsis, House, LogOut, Puzzle, RefreshCw, UserRound, type LucideIcon } from 'lucide-react';
 import { Link, matchPath, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getWorkspaceHome, HOST_ROUTE_CATALOG } from './route-catalog';
 
 const iconMap: Record<string, LucideIcon> = {
   'badge-check': BadgeCheck,
   blocks: Blocks,
-  'chart-no-axes-column': ChartNoAxesColumn,
   house: House,
 };
 const roleLabels: Record<string, string> = {
   admin: '管理员',
-  reporter: '报表专员',
   viewer: '查看者',
 };
 

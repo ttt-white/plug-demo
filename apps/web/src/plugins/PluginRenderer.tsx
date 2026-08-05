@@ -100,7 +100,12 @@ export function PluginPageRenderer({ route }: { route: ResolvedRoute }) {
   const runtime = usePluginRuntime(route.plugin.manifest.id);
   if (!runtime) return <FullScreenLoading />;
   return (
-    <PluginComponentRenderer loader={route.contribution.load} runtime={runtime} title={`${route.plugin.manifest.name}暂不可用`} />
+    <PluginComponentRenderer
+      key={`${route.plugin.manifest.id}:${route.contribution.id}`}
+      loader={route.contribution.load}
+      runtime={runtime}
+      title={`${route.plugin.manifest.name}暂不可用`}
+    />
   );
 }
 

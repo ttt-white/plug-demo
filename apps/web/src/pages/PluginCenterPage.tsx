@@ -8,7 +8,7 @@ import { matchPath, useLocation, useNavigate } from 'react-router-dom';
 
 export function PluginCenterPage() {
   const { can } = useAuth();
-  const { registrations, states, statesState, loading, routes, reloadStates, setEnabled } = usePluginRegistry();
+  const { registrations, states, statesState, loading, refreshing, routes, reloadStates, setEnabled } = usePluginRegistry();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const location = useLocation();
@@ -48,13 +48,13 @@ export function PluginCenterPage() {
           <Button
             aria-label="刷新插件状态"
             icon={<RefreshCw aria-hidden="true" size={16} />}
-            loading={statesState.status === 'loading'}
+            loading={refreshing}
             onClick={() => void reloadStates()}
           >
             刷新
           </Button>
         }
-        title="已安装插件"
+        title="已配置插件"
       >
         {error && <Alert className="mb-4" closable message={error} showIcon type="error" onClose={() => setError('')} />}
         {statesState.status === 'error' && (
@@ -95,6 +95,10 @@ export function PluginCenterPage() {
               const pluginName = plugin?.manifest.name ?? declaredId ?? registration.source.packageName;
               const pluginState = pluginId ? states.find((state) => state.id === pluginId) : undefined;
               const enabled = pluginState?.enabled ?? false;
+              const isRemote = registration.source.sourceType === 'remote';
+              const isOffline = registration.diagnostics.some(
+                (diagnostic) => diagnostic.stage === 'health' && diagnostic.severity === 'error',
+              );
               const stateLabel = pluginState ? `${enabled ? '停用' : '启用'}${pluginName}` : `${pluginName}状态未知`;
               const summary = [
                 `${plugin?.routes?.length ?? 0} 个页面`,
@@ -120,11 +124,16 @@ export function PluginCenterPage() {
                       <Typography.Text code>{registration.source.packageName}</Typography.Text>
                       <Typography.Text type="secondary">v{registration.source.packageVersion}</Typography.Text>
                       <Tag color={registration.status === 'ready' ? 'success' : 'error'}>
-                        {registration.status === 'ready' ? '可用' : '注册失败'}
+                        {registration.status === 'ready' ? (isRemote ? '在线' : '可用') : isOffline ? '离线' : '注册失败'}
                       </Tag>
                       {pluginId && !pluginState && <Tag>状态未知</Tag>}
                     </Space>
                     <Typography.Text type="secondary">{summary}</Typography.Text>
+                    {registration.source.remoteUrl && (
+                      <Typography.Text code type="secondary">
+                        {registration.source.remoteUrl}
+                      </Typography.Text>
+                    )}
                     {registration.diagnostics.map((diagnostic) => (
                       <Typography.Text
                         key={`${diagnostic.stage}:${diagnostic.code}:${diagnostic.path ?? ''}`}

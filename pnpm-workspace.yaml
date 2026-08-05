@@ -7,10 +7,11 @@ onlyBuiltDependencies:
   - lefthook
   - msw
 catalog:
-  '@fms-external/plugin-three': 1.0.0
   '@commitlint/cli': ^21.2.1
   '@commitlint/config-conventional': ^21.2.0
   '@eslint/js': ^10.0.1
+  '@module-federation/vite': ^1.20.2
+  '@module-federation/runtime': ^2.8.1
   '@tailwindcss/vite': ^4.3.3
   '@testing-library/jest-dom': 6.9.1
   '@testing-library/react': ^16.3.2
@@ -42,7 +43,6 @@ catalog:
   semver: ^7.8.5
   tailwindcss: ^4.3.3
   tsup: ^8.5.1
-  tw-animate-css: ^1.4.0
   typescript: ~6.0.3
   typescript-eslint: ^8.65.0
   vite: ^8.1.5

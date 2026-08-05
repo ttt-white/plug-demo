@@ -10,11 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fms-external/plugin-three": "catalog:",
     "@fms/plugin-contracts": "workspace:*",
     "@fms/plugin-one": "workspace:*",
     "@fms/plugin-sdk": "workspace:*",
     "@fms/plugin-two": "workspace:*",
+    "@module-federation/runtime": "catalog:",
     "antd": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",
@@ -22,6 +22,7 @@
     "react-router-dom": "catalog:"
   },
   "devDependencies": {
+    "@module-federation/vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -29,7 +30,6 @@
     "axe-core": "catalog:",
     "msw": "catalog:",
     "tailwindcss": "catalog:",
-    "tw-animate-css": "catalog:",
     "vite": "catalog:"
   },
   "msw": {

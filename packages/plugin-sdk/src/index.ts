@@ -1,5 +1,8 @@
 import type { ComponentType, ReactNode } from 'react';
 import type { PluginQueryClient } from './query';
+import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from './version';
+
+export { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from './version';
 
 export {
   serializePluginQueryKey,
@@ -13,9 +16,6 @@ export {
   type PluginQuerySchema,
   type PluginQuerySnapshot,
 } from './query';
-
-/** 当前宿主与插件共同支持的协议版本。 */
-export const PLUGIN_API_VERSION = 1 as const;
 
 /** 宿主传给插件的当前登录用户。 */
 export interface PluginUser {
@@ -396,7 +396,7 @@ export interface PluginSlotReference<
 export interface PluginRouteContribution {
   /** 路由贡献 ID，在所有插件路由中唯一。 */
   id: string;
-  /** 唯一绝对 URL，例如 `/reports`。 */
+  /** 唯一绝对 URL，例如 `/plugin-two`。 */
   path: string;
   /** 访问页面所需的 RBAC 权限码。 */
   permission: string;
@@ -478,6 +478,29 @@ export interface WorkspacePlugin {
   extensionSlots?: PluginExtensionSlotContribution[];
 }
 
+/** 远程插件服务公开的最小发现信息。 */
+export interface RemotePluginManifest {
+  /** 远程 manifest 的结构版本。 */
+  schemaVersion: typeof REMOTE_PLUGIN_MANIFEST_VERSION;
+  /** 插件 ID，必须与运行时 manifest 一致。 */
+  id: string;
+  /** 插件展示名称。 */
+  name: string;
+  /** 插件 SemVer 版本。 */
+  version: string;
+  /** 插件 SDK 协议版本。 */
+  apiVersion: typeof PLUGIN_API_VERSION;
+  /** Module Federation 远程入口。 */
+  remote: {
+    /** Federation 容器名称。 */
+    name: string;
+    /** 相对远程服务根地址的入口路径。 */
+    entry: string;
+    /** 容器公开的插件模块名称。 */
+    module: string;
+  };
+}
+
 /** 宿主执行插件注册校验时提供的边界配置。 */
 export interface PluginValidationOptions {
   /** 禁止插件覆盖的宿主 URL。 */
@@ -498,10 +521,14 @@ export interface PluginPackageMetadata {
   declaredApiVersion?: unknown;
   /** package.json 声明的插件样式入口。 */
   style?: string;
+  /** 插件代码来源；缺省表示本地安装包。 */
+  sourceType?: 'package' | 'remote';
+  /** 远程插件服务根地址。 */
+  remoteUrl?: string;
 }
 
 /** 插件注册诊断所属阶段。 */
-export type PluginDiagnosticStage = 'discovery' | 'load' | 'schema' | 'compatibility' | 'contribution' | 'dependency';
+export type PluginDiagnosticStage = 'discovery' | 'health' | 'load' | 'schema' | 'compatibility' | 'contribution' | 'dependency';
 
 /** 可由插件中心和日志系统消费的结构化注册诊断。 */
 export interface PluginDiagnostic {
@@ -517,9 +544,9 @@ export interface PluginDiagnostic {
   path?: string;
 }
 
-/** Vite 发现器交给宿主的惰性插件包描述符。 */
+/** 本地发现器或远程健康检查交给宿主的惰性插件描述符。 */
 export interface PluginPackageDescriptor {
-  /** 不执行插件代码即可读取的包元数据。 */
+  /** 不执行插件代码即可读取的来源元数据。 */
   metadata: PluginPackageMetadata;
   /** 发现阶段已经识别出的元数据问题。 */
   diagnostics?: readonly PluginDiagnostic[];
@@ -551,7 +578,7 @@ export interface FailedPluginRegistration extends PluginRegistrationBase {
 /** 单个插件包的完整注册结果。 */
 export type PluginRegistration = ReadyPluginRegistration | FailedPluginRegistration;
 
-export { loadPluginRegistrations, validatePlugins } from './plugin-validation';
+export { loadPluginRegistrations, parseRemotePluginManifest, validatePlugins } from './plugin-validation';
 
 /** 按优先级降序、模块 ID 升序返回新的模块贡献数组。 */
 export function sortModuleContributions(modules: readonly PluginModuleContribution[]): PluginModuleContribution[] {

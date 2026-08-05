@@ -4,20 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "preinstall": "pnpm external:install",
-    "postinstall": "pnpm external:build",
-    "dev": "node scripts/dev.mjs",
-    "build": "pnpm external:build && pnpm -r build && pnpm verify:production",
+    "dev": "pnpm dev:host",
+    "dev:host": "pnpm --filter @fms/web dev",
+    "dev:all": "node scripts/dev.mjs",
+    "build": "pnpm -r build && pnpm verify:production",
     "verify:production": "node scripts/assert-production-build.mjs",
-    "typecheck": "pnpm external:typecheck && pnpm -r typecheck",
-    "test": "pnpm external:test && pnpm -r test",
-    "lint": "pnpm external:lint && eslint apps packages plugins && oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect apps packages plugins",
-    "external:install": "pnpm --dir external/three install",
-    "external:build": "pnpm --dir external/three build",
-    "external:dev": "pnpm --dir external/three dev",
-    "external:typecheck": "pnpm --dir external/three typecheck",
-    "external:test": "pnpm --dir external/three test",
-    "external:lint": "pnpm --dir external/three lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "eslint apps packages plugins && oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect apps packages plugins",
+    "external:install": "pnpm --dir ../扩展插件/three install",
+    "external:build": "pnpm --dir ../扩展插件/three build",
+    "external:dev": "pnpm --dir ../扩展插件/three dev",
+    "external:typecheck": "pnpm --dir ../扩展插件/three typecheck",
+    "external:test": "pnpm --dir ../扩展插件/three test",
+    "external:lint": "pnpm --dir ../扩展插件/three lint",
     "external:setup": "pnpm external:install && pnpm external:build",
     "commit": "git add . && lefthook run pre-commit && git add . && czg --no-verify"
   },
@@ -52,10 +52,5 @@
     "node": ">=24.0.0",
     "pnpm": ">=10.0.0"
   },
-  "packageManager": "pnpm@10.30.3",
-  "pnpm": {
-    "overrides": {
-      "@fms-external/plugin-three": "link:./external/three"
-    }
-  }
+  "packageManager": "pnpm@10.30.3"
 }

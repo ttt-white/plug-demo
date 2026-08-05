@@ -1,24 +1,14 @@
 // @vitest-environment jsdom
 
-import type { DashboardSummary } from '@fms/plugin-contracts';
+import type { DemoStatus } from '@fms/plugin-contracts';
 import { createPluginChannelBus, type PluginQueryClient, type PluginQueryOptions, type PluginRuntime } from '@fms/plugin-sdk';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import OneModule from './OneModule';
 
-const dashboard: DashboardSummary = {
-  updatedAt: '2026-08-04 10:00',
-  inTransit: 28,
-  pendingDispatch: 6,
-  exceptions: 3,
-  completedToday: 42,
-  onTimeRate: 96.7,
-  metrics: [
-    { id: 'revenue', label: '本月结算额', value: '¥ 1.28M', change: 12.8 },
-    { id: 'ontime', label: '准时交付率', value: '96.7%', change: -0.6 },
-  ],
-};
+const status: DemoStatus = { message: '共享 API 已就绪', updatedAt: '2026-08-04 10:00' };
 
 function queryWith<TData>(data: TData): PluginQueryClient {
   return {
@@ -43,19 +33,14 @@ function queryWith<TData>(data: TData): PluginQueryClient {
 }
 
 function createRuntime(): PluginRuntime {
+  const bus = createPluginChannelBus();
   return {
     pluginId: 'one',
     api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
-    query: queryWith(dashboard),
-    user: {
-      id: 'admin',
-      username: 'admin',
-      displayName: '管理员',
-      role: 'admin',
-      permissions: ['*'],
-    },
+    query: queryWith(status),
+    user: { id: 'admin', username: 'admin', displayName: '管理员', role: 'admin', permissions: ['*'] },
     can: () => true,
-    channel: createPluginChannelBus().forPlugin('one'),
+    channel: bus.forPlugin('one'),
     extensions: { renderSlot: (_, fallback) => fallback ?? null, routesFor: () => [], navigateTo: vi.fn() },
   };
 }
@@ -63,12 +48,13 @@ function createRuntime(): PluginRuntime {
 afterEach(cleanup);
 
 describe('OneModule', () => {
-  it('renders dashboard metrics from the shared query snapshot', () => {
+  it('uses the runtime query, user, permission and public channel', async () => {
     render(<OneModule runtime={createRuntime()} />);
+    expect(screen.getByRole('heading', { name: '插槽模块 one' })).toBeInTheDocument();
+    expect(screen.getByText('共享 API 已就绪')).toBeInTheDocument();
+    expect(screen.getByText('管理员 · 已授权')).toBeInTheDocument();
 
-    expect(screen.getByRole('heading', { name: '业务指标' })).toBeInTheDocument();
-    expect(screen.getByText('本月结算额')).toBeInTheDocument();
-    expect(screen.getByText('¥ 1.28M')).toBeInTheDocument();
-    expect(screen.getByText('0.6%')).toHaveClass('text-red-700');
+    await userEvent.click(screen.getByRole('button', { name: '发送公共消息' }));
+    expect(await screen.findByText('公共消息：one: one 已就绪')).toBeInTheDocument();
   });
 });

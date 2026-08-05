@@ -1,115 +1,61 @@
 // @vitest-environment jsdom
 
-import { twoContract, type ReportsResponse } from '@fms/plugin-contracts';
-import { createPluginChannelBus, type PluginQueryClient, type PluginQueryOptions, type PluginRuntime } from '@fms/plugin-sdk';
+import { threeContract, twoContract, workspaceContract } from '@fms/plugin-contracts';
+import { createPluginChannelBus, type PluginQueryClient, type PluginRuntime } from '@fms/plugin-sdk';
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import TwoPage from './TwoPage';
 
-window.matchMedia = vi.fn().mockImplementation(
-  (query: string): MediaQueryList => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(() => false),
-  }),
-);
-
-class ResizeObserverMock {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-vi.stubGlobal('ResizeObserver', ResizeObserverMock);
-
-const getComputedStyle = window.getComputedStyle.bind(window);
-window.getComputedStyle = (element) => getComputedStyle(element);
-
-const reports: ReportsResponse = {
-  updatedAt: '2026-08-04 10:00',
-  total: 1,
-  rows: [
-    {
-      id: 'FMS-001',
-      origin: '苏州',
-      destination: '上海',
-      carrier: '东驰物流',
-      status: '运输中',
-      amount: 18600,
-      updatedAt: '10:24',
-    },
-  ],
-  facets: { carriers: ['东驰物流'], statuses: ['待处理', '运输中', '已完成', '异常'] },
-};
-
-function createQueryClient(observe: ReturnType<typeof vi.fn>): PluginQueryClient {
-  return {
-    observe: observe as PluginQueryClient['observe'],
-    invalidate: vi.fn(),
-    clear: vi.fn(),
-  };
-}
-
-function LocationProbe() {
-  const location = useLocation();
-  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
-}
+const query: PluginQueryClient = { observe: vi.fn(), invalidate: vi.fn(), clear: vi.fn() };
 
 afterEach(cleanup);
 
 describe('TwoPage', () => {
-  it('updates its URL-backed query key when another plugin sends a carrier filter', async () => {
+  it('shows route params and receives typed direct and public messages', async () => {
     const bus = createPluginChannelBus();
-    const observe = vi.fn(<TData,>(_options: PluginQueryOptions<TData>) => {
-      const snapshot = {
-        status: 'success' as const,
-        data: reports as TData,
-        error: null,
-        isFetching: false,
-        updatedAt: Date.now(),
-      };
-      return {
-        getSnapshot: () => snapshot,
-        subscribe: () => () => undefined,
-        fetch: async () => snapshot.data,
-        refetch: async () => snapshot.data,
-      };
-    });
+    const navigateTo = vi.fn();
     const runtime: PluginRuntime = {
       pluginId: 'two',
       api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
-      query: createQueryClient(observe),
-      user: {
-        id: 'admin',
-        username: 'admin',
-        displayName: '管理员',
-        role: 'admin',
-        permissions: ['*'],
-      },
+      query,
+      user: { id: 'admin', username: 'admin', displayName: '管理员', role: 'admin', permissions: ['*'] },
       can: () => true,
       channel: bus.forPlugin('two'),
-      extensions: { renderSlot: () => null, routesFor: () => [], navigateTo: vi.fn() },
+      extensions: {
+        renderSlot: () => <div>three 扩展模块</div>,
+        routesFor: () => [
+          {
+            id: 'two.three',
+            pluginId: 'three',
+            targetRoute: threeContract.routes.page,
+            path: threeContract.routes.page.path,
+            label: '打开外部插件 three',
+            order: 10,
+          },
+        ],
+        navigateTo,
+      },
     };
 
     render(
-      <MemoryRouter initialEntries={['/reports']}>
-        <LocationProbe />
+      <MemoryRouter initialEntries={['/plugin-two?from=three&message=路由消息']}>
         <TwoPage runtime={runtime} />
       </MemoryRouter>,
     );
-    expect(await screen.findByRole('cell', { name: 'FMS-001' })).toBeInTheDocument();
 
-    act(() => bus.forPlugin('three').publish(twoContract.channels.filterCarrier, { carrier: '东驰物流' }));
+    expect(screen.getByText('路由参数：three: 路由消息')).toBeInTheDocument();
+    expect(screen.getByText('three 扩展模块')).toBeInTheDocument();
 
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('carrier=%E4%B8%9C%E9%A9%B0%E7%89%A9%E6%B5%81'));
-    const lastOptions = observe.mock.calls.at(-1)?.[0] as PluginQueryOptions<unknown> | undefined;
-    expect(lastOptions?.queryKey).toContain('东驰物流');
+    act(() => bus.forPlugin('three').publish(twoContract.channels.message, { message: '定向消息' }));
+    expect(screen.getByText('定向消息：定向消息')).toBeInTheDocument();
+
+    act(() => bus.forPlugin('three').publishPublic(workspaceContract.channels.publicMessage, { message: '公共消息' }));
+    expect(screen.getByText('公共消息：three: 公共消息')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '打开外部插件 three' }));
+    expect(navigateTo).toHaveBeenCalledWith(threeContract.routes.page);
   });
 });

@@ -2,6 +2,8 @@ import { HOST_ROUTES, HOST_SLOTS } from '@/app/route-catalog';
 import { useAuth } from '@/auth/AuthProvider';
 import { apiClient } from '@/services/api-client';
 import { createWorkspaceQueryClient } from '@/services/query-client';
+import { remotePluginDefinitions, remotePluginHealthInterval } from '@/plugins/remote-plugin-catalog';
+import { inspectRemotePlugins } from '@/plugins/remote-plugin-loader';
 import {
   createPluginChannelBus,
   loadPluginRegistrations,
@@ -49,6 +51,7 @@ interface PluginRegistryContextValue {
   states: PluginState[];
   statesState: PluginStatesState;
   loading: boolean;
+  refreshing: boolean;
   routes: ResolvedRoute[];
   query: PluginQueryClient;
   modulesFor(routeId: string, slotId: string, targetPluginId?: string): ResolvedModule[];
@@ -77,25 +80,58 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
   });
   const [registrations, setRegistrations] = useState<PluginRegistration[]>([]);
   const [registrationsLoading, setRegistrationsLoading] = useState(true);
+  const [registrationsRefreshing, setRegistrationsRefreshing] = useState(false);
+  const registrationRefreshPromise = useRef<Promise<void> | null>(null);
+  const registrationRequestSequence = useRef(0);
   const stateRequestSequence = useRef(0);
   const channelBus = useMemo(() => createPluginChannelBus(), []);
   const query = useMemo(() => createWorkspaceQueryClient(user?.id ?? null), [user?.id]);
 
   useEffect(() => () => query.clear(), [query]);
 
-  useEffect(() => {
-    let active = true;
-    void loadPluginRegistrations(installedPluginDescriptors, PLUGIN_VALIDATION_OPTIONS).then((nextRegistrations) => {
-      if (!active) return;
-      setRegistrations(nextRegistrations);
-      setRegistrationsLoading(false);
-    });
-    return () => {
-      active = false;
-    };
+  const refreshRegistrations = useCallback(async (foreground = false) => {
+    if (foreground) setRegistrationsRefreshing(true);
+    let request = registrationRefreshPromise.current;
+    if (!request) {
+      const requestSequence = ++registrationRequestSequence.current;
+      request = (async () => {
+        try {
+          const remoteDescriptors = await inspectRemotePlugins(remotePluginDefinitions);
+          const nextRegistrations = await loadPluginRegistrations(
+            [...installedPluginDescriptors, ...remoteDescriptors],
+            PLUGIN_VALIDATION_OPTIONS,
+          );
+          if (requestSequence !== registrationRequestSequence.current) return;
+          setRegistrations(nextRegistrations);
+        } catch (reason) {
+          console.error('刷新插件注册表失败', reason);
+        } finally {
+          if (requestSequence === registrationRequestSequence.current) setRegistrationsLoading(false);
+        }
+      })();
+      registrationRefreshPromise.current = request;
+      void request.finally(() => {
+        if (registrationRefreshPromise.current === request) registrationRefreshPromise.current = null;
+      });
+    }
+    try {
+      await request;
+    } finally {
+      if (foreground) setRegistrationsRefreshing(false);
+    }
   }, []);
 
-  const reloadStates = useCallback(async () => {
+  useEffect(() => {
+    void refreshRegistrations(true);
+    const interval = window.setInterval(() => void refreshRegistrations(), remotePluginHealthInterval);
+    return () => {
+      window.clearInterval(interval);
+      registrationRequestSequence.current += 1;
+      registrationRefreshPromise.current = null;
+    };
+  }, [refreshRegistrations]);
+
+  const reloadEnabledStates = useCallback(async () => {
     if (!user) return;
     const ownerId = user.id;
     const requestSequence = ++stateRequestSequence.current;
@@ -120,13 +156,18 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const reloadStates = useCallback(
+    async () => Promise.all([reloadEnabledStates(), refreshRegistrations(true)]).then(() => undefined),
+    [refreshRegistrations, reloadEnabledStates],
+  );
+
   useEffect(() => {
     if (!user) return;
-    void reloadStates();
+    void reloadEnabledStates();
     return () => {
       stateRequestSequence.current += 1;
     };
-  }, [reloadStates, user]);
+  }, [reloadEnabledStates, user]);
 
   const statesState = useMemo<PluginStatesState>(() => {
     if (!user || ownedStates.ownerId !== user.id) return IDLE_PLUGIN_STATES;
@@ -174,6 +215,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
       states,
       statesState,
       loading,
+      refreshing: registrationsRefreshing || statesState.status === 'loading',
       routes,
       query,
       modulesFor(routeId, slotId, targetPluginId) {
@@ -268,6 +310,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
       navigate,
       query,
       registrations,
+      registrationsRefreshing,
       reloadStates,
       routeLinks,
       routes,

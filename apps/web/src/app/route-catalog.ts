@@ -34,7 +34,7 @@ export const HOST_ROUTE_CATALOG: readonly HostRouteDefinition[] = [
 ];
 
 export const HOST_ROUTES = [LOGIN_PATH, ...HOST_ROUTE_CATALOG.map(({ path }) => path)] as const;
-export const HOST_SLOTS = { dashboard: ['dashboard.metrics'] } as const;
+export const HOST_SLOTS = { dashboard: ['dashboard.demo'] } as const;
 
 interface PluginRouteEntry {
   contribution: PluginRouteContribution;

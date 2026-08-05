@@ -1,1 +1,1 @@
-export { twoContract, type TwoFilterCarrierPayload, type TwoPluginContract } from '@fms/plugin-contracts';
+export { twoContract, type PluginMessagePayload, type TwoPluginContract } from '@fms/plugin-contracts';

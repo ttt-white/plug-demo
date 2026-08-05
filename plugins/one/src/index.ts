@@ -9,14 +9,14 @@ export const plugin: WorkspacePlugin = {
     name: 'one',
     version: '1.0.0',
     apiVersion: PLUGIN_API_VERSION,
-    description: '在工作台中展示核心业务指标。',
+    description: '向宿主工作台注入一个最小模块。',
   },
   modules: [
     {
       id: 'one.module',
-      routeId: oneContract.targets.dashboardMetrics.routeId,
-      slotId: oneContract.targets.dashboardMetrics.slotId,
-      permission: 'dashboard:metrics:view',
+      routeId: oneContract.targets.dashboard.routeId,
+      slotId: oneContract.targets.dashboard.slotId,
+      permission: 'dashboard:view',
       priority: 100,
       load: () => import('./OneModule'),
     },

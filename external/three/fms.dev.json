@@ -1,8 +1,0 @@
-{
-  "host": {
-    "url": "http://localhost:3000",
-    "workspaceRoot": "../..",
-    "start": true,
-    "waitForReady": true
-  }
-}

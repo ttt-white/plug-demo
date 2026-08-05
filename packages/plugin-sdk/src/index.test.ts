@@ -2,8 +2,10 @@ import type { ComponentType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   PLUGIN_API_VERSION,
+  REMOTE_PLUGIN_MANIFEST_VERSION,
   createPluginChannelBus,
   loadPluginRegistrations,
+  parseRemotePluginManifest,
   sortModuleContributions,
   validatePlugins,
   type PluginChannelReference,
@@ -17,15 +19,43 @@ const Component = (() => null) as ComponentType<PluginComponentProps>;
 const load = async () => ({ default: Component });
 const options = {
   reservedPaths: ['/login', '/dashboard', '/plugins'],
-  knownSlots: { dashboard: ['dashboard.metrics'] },
+  knownSlots: { dashboard: ['dashboard.demo'] },
 };
 
 function createPlugin(id: string): WorkspacePlugin {
   return {
     manifest: { id, name: id, version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
-    modules: [{ id: `${id}.module`, routeId: 'dashboard', slotId: 'dashboard.metrics', load }],
+    modules: [{ id: `${id}.module`, routeId: 'dashboard', slotId: 'dashboard.demo', load }],
   };
 }
+
+describe('remote plugin manifest', () => {
+  it('accepts the supported remote transport contract', () => {
+    expect(
+      parseRemotePluginManifest({
+        schemaVersion: REMOTE_PLUGIN_MANIFEST_VERSION,
+        id: 'three',
+        name: 'three',
+        version: '1.0.0',
+        apiVersion: PLUGIN_API_VERSION,
+        remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+      }),
+    ).toMatchObject({ id: 'three', remote: { name: 'plugin_three' } });
+  });
+
+  it('rejects malformed or incompatible remote manifests', () => {
+    expect(() =>
+      parseRemotePluginManifest({
+        schemaVersion: 2,
+        id: '',
+        name: 'three',
+        version: '1.0.0',
+        apiVersion: PLUGIN_API_VERSION,
+        remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+      }),
+    ).toThrow();
+  });
+});
 
 describe('validatePlugins', () => {
   it('accepts a valid plugin', () => {
@@ -58,24 +88,24 @@ describe('validatePlugins', () => {
 
   it('accepts a plugin module and typed route link targeting another plugin', () => {
     const two = createPlugin('two');
-    two.routes = [{ id: 'two', path: '/reports', permission: 'reports:view', menu: { label: 'two', order: 1 }, load }];
-    two.extensionSlots = [{ id: 'two.summary', routeId: 'two' }];
+    two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
+    two.extensionSlots = [{ id: 'two.demo', routeId: 'two' }];
 
     const three = createPlugin('three');
     three.modules = [
       {
-        id: 'three.summary',
+        id: 'three.demo',
         targetPluginId: 'two',
         routeId: 'two',
-        slotId: 'two.summary',
+        slotId: 'two.demo',
         load,
       },
     ];
     three.routes = [
       {
         id: 'three',
-        path: '/carrier-ratings',
-        permission: 'carrier-ratings:view',
+        path: '/plugin-three',
+        permission: 'demo:three:view',
         menu: { label: 'three', order: 1 },
         load,
       },
@@ -94,13 +124,13 @@ describe('validatePlugins', () => {
 
   it('rejects unknown plugin slots and route-link references', () => {
     const two = createPlugin('two');
-    two.routes = [{ id: 'two', path: '/reports', permission: 'reports:view', menu: { label: 'two', order: 1 }, load }];
-    two.extensionSlots = [{ id: 'two.summary', routeId: 'two' }];
+    two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
+    two.extensionSlots = [{ id: 'two.demo', routeId: 'two' }];
 
     const three = createPlugin('three');
     three.modules = [
       {
-        id: 'three.summary',
+        id: 'three.demo',
         targetPluginId: 'two',
         routeId: 'two',
         slotId: 'two.unknown',
@@ -110,8 +140,8 @@ describe('validatePlugins', () => {
     three.routes = [
       {
         id: 'three',
-        path: '/carrier-ratings',
-        permission: 'carrier-ratings:view',
+        path: '/plugin-three',
+        permission: 'demo:three:view',
         menu: { label: 'three', order: 1 },
         load,
       },
@@ -136,13 +166,13 @@ describe('validatePlugins', () => {
 
   it('rejects duplicate route-link ids', () => {
     const two = createPlugin('two');
-    two.routes = [{ id: 'two', path: '/reports', permission: 'reports:view', menu: { label: 'two', order: 1 }, load }];
+    two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
     const three = createPlugin('three');
     three.routes = [
       {
         id: 'three',
-        path: '/carrier-ratings',
-        permission: 'carrier-ratings:view',
+        path: '/plugin-three',
+        permission: 'demo:three:view',
         menu: { label: 'three', order: 2 },
         load,
       },
@@ -162,7 +192,7 @@ describe('validatePlugins', () => {
   it('returns schema diagnostics instead of throwing for arbitrary runtime values', () => {
     const invalidLoader = createPlugin('invalid-loader') as unknown as Record<string, unknown>;
     invalidLoader['modules'] = [
-      { id: 'invalid-loader.module', routeId: 'dashboard', slotId: 'dashboard.metrics', load: 'not-a-function' },
+      { id: 'invalid-loader.module', routeId: 'dashboard', slotId: 'dashboard.demo', load: 'not-a-function' },
     ];
 
     expect(() => validatePlugins([null, {}, invalidLoader], options)).not.toThrow();
@@ -298,9 +328,9 @@ describe('validatePlugins', () => {
 
   it('resolves versioned capabilities and rejects a capability whose provider is invalid', () => {
     const provider = createPlugin('provider');
-    provider.manifest.provides = { capabilities: [{ id: 'reports.filter', version: '1.1.0' }] };
+    provider.manifest.provides = { capabilities: [{ id: 'demo.message', version: '1.1.0' }] };
     const consumer = createPlugin('consumer');
-    consumer.manifest.requires = { capabilities: [{ id: 'reports.filter', range: '^1.0.0' }] };
+    consumer.manifest.requires = { capabilities: [{ id: 'demo.message', range: '^1.0.0' }] };
     expect(validatePlugins([provider, consumer], options).every((registration) => registration.status === 'ready')).toBe(true);
 
     provider.routes = [{ id: 'invalid', path: '/login', permission: 'invalid:view', menu: { label: 'Invalid', order: 1 }, load }];
@@ -317,19 +347,19 @@ describe('createPluginChannelBus', () => {
     const bus = createPluginChannelBus();
     const twoListener = vi.fn();
     const otherListener = vi.fn();
-    const filterCarrier: PluginChannelReference<{ carrier: string }> = {
+    const messageChannel: PluginChannelReference<{ message: string }> = {
       pluginId: 'two',
-      topic: 'two:filter-carrier',
+      topic: 'two:message',
     };
-    const unsubscribe = bus.forPlugin('two').subscribe(filterCarrier, twoListener);
-    bus.forPlugin('other-plugin').subscribe('two:filter-carrier', otherListener);
+    const unsubscribe = bus.forPlugin('two').subscribe(messageChannel, twoListener);
+    bus.forPlugin('other-plugin').subscribe('two:message', otherListener);
 
-    bus.forPlugin('three').publish(filterCarrier, { carrier: '东驰物流' });
-    expect(twoListener).toHaveBeenCalledWith({ carrier: '东驰物流' }, { fromPluginId: 'three' });
+    bus.forPlugin('three').publish(messageChannel, { message: 'hello' });
+    expect(twoListener).toHaveBeenCalledWith({ message: 'hello' }, { fromPluginId: 'three' });
     expect(otherListener).not.toHaveBeenCalled();
 
     unsubscribe();
-    bus.forPlugin('three').publish(filterCarrier, { carrier: '北辰货运' });
+    bus.forPlugin('three').publish(messageChannel, { message: 'again' });
     expect(twoListener).toHaveBeenCalledOnce();
   });
 

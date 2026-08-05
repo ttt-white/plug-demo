@@ -7,14 +7,32 @@ import type {
   PluginPackageDescriptor,
   PluginPackageMetadata,
   PluginRegistration,
+  RemotePluginManifest,
   PluginRouteContribution,
   PluginValidationOptions,
   PluginVersionRequirement,
   WorkspacePlugin,
 } from './index';
-import { PLUGIN_API_VERSION } from './index';
+import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from './version';
 
 const nonEmptyStructureString = z.string();
+const nonEmptyTrimmedString = z.string().trim().min(1);
+const remotePluginManifestSchema = z
+  .object({
+    schemaVersion: z.literal(REMOTE_PLUGIN_MANIFEST_VERSION),
+    id: nonEmptyTrimmedString,
+    name: nonEmptyTrimmedString,
+    version: nonEmptyTrimmedString,
+    apiVersion: z.literal(PLUGIN_API_VERSION),
+    remote: z
+      .object({
+        name: nonEmptyTrimmedString,
+        entry: nonEmptyTrimmedString,
+        module: nonEmptyTrimmedString,
+      })
+      .strict(),
+  })
+  .strict();
 const componentLoaderSchema = z.custom<PluginComponentLoader>((value) => typeof value === 'function', '必须是函数');
 const menuSchema = z
   .object({
@@ -121,6 +139,11 @@ const pluginSchema = z
       .optional(),
   })
   .strict();
+
+/** 解析并严格校验远程插件服务返回的 manifest。 */
+export function parseRemotePluginManifest(value: unknown): RemotePluginManifest {
+  return remotePluginManifestSchema.parse(value);
+}
 
 interface ValidationRecord {
   index: number;
