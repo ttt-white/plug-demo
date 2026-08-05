@@ -97,14 +97,16 @@ const status = usePluginQuery(runtime.query, {
 
 ## 插槽
 
-宿主先渲染插槽并加入白名单：
+宿主页面和插槽由共享契约公开，页面、白名单和插件贡献都引用同一个 ID：
 
 ```tsx
-<PluginSlot routeId="dashboard" slotId="dashboard.demo" />
+<PluginSlot routeId={hostContract.slots.dashboard.routeId} slotId={hostContract.slots.dashboard.slotId} />
 ```
 
 ```ts
-export const HOST_SLOTS = { dashboard: ['dashboard.demo'] } as const;
+export const HOST_SLOTS = {
+  [hostContract.slots.dashboard.routeId]: [hostContract.slots.dashboard.slotId],
+} as const;
 ```
 
 one 的贡献：
@@ -113,8 +115,8 @@ one 的贡献：
 modules: [
   {
     id: 'one.module',
-    routeId: 'dashboard',
-    slotId: 'dashboard.demo',
+    routeId: hostContract.slots.dashboard.routeId,
+    slotId: hostContract.slots.dashboard.slotId,
     permission: 'dashboard:view',
     load: () => import('./OneModule'),
   },
@@ -122,6 +124,16 @@ modules: [
 ```
 
 插件间插槽需要目标插件声明 `extensionSlots`，贡献方的 module 同时声明 `targetPluginId`。当前 two/three 是完整示例。
+
+## 贡献关系
+
+插件中心的“贡献关系”分别列出页面、页面入口、模块和开放插槽。模块会显示完整的目标页面与插槽，页面入口会同时显示挂载页面和跳转页面。禁用插件的已校验声明仍可查看；无法加载的远程插件会在诊断列表中标明原因。
+
+SDK 也公开同一份纯数据目录，可用于生成二开文档或其他管理工具：
+
+```ts
+const catalog = catalogPluginContributions(plugins, hostCatalog);
+```
 
 ## 类型化通信
 
@@ -158,11 +170,12 @@ runtime.extensions.navigateTo(twoContract.routes.page, {
 
 ## 远程插件
 
-远程服务至少公开：
+远程服务需要在同一服务基地址下公开 manifest 和 Federation 入口。例如服务基地址为
+`https://plugins.example.com/catalog/demo` 时，至少公开：
 
 ```text
-/fms-plugin.json  健康检查和远程身份
-/remoteEntry.js   Module Federation 入口
+https://plugins.example.com/catalog/demo/fms-plugin.json  健康检查和远程身份
+https://plugins.example.com/catalog/demo/remoteEntry.js   Module Federation 入口
 ```
 
 manifest 示例：
@@ -170,19 +183,21 @@ manifest 示例：
 ```json
 {
   "schemaVersion": 1,
-  "id": "three",
-  "name": "three",
+  "id": "demo",
+  "name": "demo",
   "version": "1.0.0",
   "apiVersion": 1,
   "remote": {
-    "name": "plugin_three",
-    "entry": "/remoteEntry.js",
+    "name": "plugin_demo",
+    "entry": "./remoteEntry.js",
     "module": "./plugin"
   }
 }
 ```
 
-宿主配置的插件 ID、容器名、入口和暴露模块必须与 manifest 一致。健康检查失败时，宿主保留离线诊断但不加载远程代码；下一次健康检查成功后自动恢复注册。
+`remote.entry` 可以是相对服务基地址的路径，也可以是完整的 HTTP(S) 地址。若插件部署在带路径前缀的位置，应使用 `./remoteEntry.js`；以 `/` 开头的入口会从远程域名根路径解析。
+
+管理员在插件中心输入服务基地址或完整的 `fms-plugin.json` 地址完成导入。插件 ID、服务地址和 Federation 容器名在工作区内必须唯一；修改地址时，新服务必须返回同一个插件 ID。宿主保存完整 manifest 快照，因此健康检查失败时仍会显示插件身份和离线诊断，但不会加载远程代码；下一次健康检查成功后自动恢复注册。
 
 React、React DOM、Ant Design、SDK 和共享契约必须在宿主与 remote 的 Federation 配置中声明为单例共享依赖，避免出现多个运行时实例。
 
@@ -195,4 +210,6 @@ pnpm test
 pnpm build
 ```
 
-远程构建应同时包含 `fms-plugin.json`、`remoteEntry.js` 和样式产物。部署时需要允许宿主跨域读取这些文件。
+远程构建应同时包含 `fms-plugin.json`、Federation 入口和样式产物。部署在不同域名或端口时，manifest、入口脚本及其动态资源都需要返回允许宿主来源访问的 CORS 响应头。
+
+共享 SDK 或 contracts 变更后，在主体根目录执行 `pnpm external:sync`，可构建并同步 three 的 `vendor/` 开发快照。`FMS_EXTERNAL_PLUGIN_ROOT` 可用于指定其他外部插件目录。

@@ -1,7 +1,7 @@
 import { usePluginRegistry } from '@/plugins/PluginRegistryProvider';
 import { PluginSlot } from '@/plugins/PluginRenderer';
 import { apiClient } from '@/services/api-client';
-import { fmsDataContract } from '@fms/plugin-contracts';
+import { fmsDataContract, hostContract } from '@fms/plugin-contracts';
 import { usePluginQuery } from '@fms/plugin-sdk';
 import { Button, Typography } from 'antd';
 import { RefreshCw } from 'lucide-react';
@@ -37,8 +37,8 @@ export function DashboardPage() {
 
       <PluginSlot
         fallback={<Typography.Text type="secondary">one 当前未启用</Typography.Text>}
-        routeId="dashboard"
-        slotId="dashboard.demo"
+        routeId={hostContract.slots.dashboard.routeId}
+        slotId={hostContract.slots.dashboard.slotId}
       />
     </section>
   );

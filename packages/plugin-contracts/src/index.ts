@@ -1,4 +1,6 @@
 import type {
+  HostRouteReference,
+  HostSlotReference,
   PluginChannelReference,
   PluginPublicChannelReference,
   PluginRouteReference,
@@ -25,21 +27,35 @@ export interface PluginMessagePayload {
   message: string;
 }
 
+export interface HostContract {
+  readonly routes: {
+    readonly dashboard: HostRouteReference<'dashboard'> & { readonly path: '/dashboard' };
+  };
+  readonly slots: {
+    readonly dashboard: HostSlotReference<'dashboard', 'dashboard.demo'>;
+  };
+}
+
+export const hostContract: HostContract = {
+  routes: {
+    dashboard: { path: '/dashboard', routeId: 'dashboard' },
+  },
+  slots: {
+    dashboard: { routeId: 'dashboard', slotId: 'dashboard.demo' },
+  },
+};
+
 export interface OnePluginContract {
   readonly pluginId: 'one';
   readonly targets: {
-    readonly dashboard: {
-      readonly path: '/dashboard';
-      readonly routeId: 'dashboard';
-      readonly slotId: 'dashboard.demo';
-    };
+    readonly dashboard: HostSlotReference<'dashboard', 'dashboard.demo'> & { readonly path: '/dashboard' };
   };
 }
 
 export const oneContract: OnePluginContract = {
   pluginId: 'one',
   targets: {
-    dashboard: { path: '/dashboard', routeId: 'dashboard', slotId: 'dashboard.demo' },
+    dashboard: { ...hostContract.routes.dashboard, ...hostContract.slots.dashboard },
   },
 };
 
@@ -84,6 +100,7 @@ export const threeContract: ThreePluginContract = {
 };
 
 export interface WorkspaceContract {
+  readonly host: HostContract;
   readonly plugins: {
     readonly one: OnePluginContract;
     readonly two: TwoPluginContract;
@@ -95,6 +112,7 @@ export interface WorkspaceContract {
 }
 
 export const workspaceContract: WorkspaceContract = {
+  host: hostContract,
   plugins: { one: oneContract, two: twoContract, three: threeContract },
   channels: {
     publicMessage: { topic: 'workspace:public-message' },

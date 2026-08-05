@@ -1,4 +1,5 @@
-import type { PluginRouteContribution } from '@fms/plugin-sdk';
+import { hostContract } from '@fms/plugin-contracts';
+import type { PluginContributionCatalogHost, PluginRouteContribution } from '@fms/plugin-sdk';
 
 export type HostRouteId = 'dashboard' | 'plugins' | 'forbidden';
 
@@ -19,8 +20,8 @@ export const FORBIDDEN_PATH = '/forbidden';
 
 export const HOST_ROUTE_CATALOG: readonly HostRouteDefinition[] = [
   {
-    id: 'dashboard',
-    path: '/dashboard',
+    id: hostContract.routes.dashboard.routeId,
+    path: hostContract.routes.dashboard.path,
     permission: 'dashboard:view',
     menu: { label: '工作台', title: '宿主：工作台', icon: 'house', order: 10 },
   },
@@ -34,7 +35,22 @@ export const HOST_ROUTE_CATALOG: readonly HostRouteDefinition[] = [
 ];
 
 export const HOST_ROUTES = [LOGIN_PATH, ...HOST_ROUTE_CATALOG.map(({ path }) => path)] as const;
-export const HOST_SLOTS = { dashboard: ['dashboard.demo'] } as const;
+export const HOST_SLOTS = {
+  [hostContract.slots.dashboard.routeId]: [hostContract.slots.dashboard.slotId],
+} as const;
+
+export const HOST_CONTRIBUTION_CATALOG: PluginContributionCatalogHost = {
+  id: 'host',
+  name: '主体',
+  routes: HOST_ROUTE_CATALOG.map((route) => ({ id: route.id, path: route.path, label: route.menu?.label ?? route.id })),
+  extensionSlots: [
+    {
+      id: hostContract.slots.dashboard.slotId,
+      routeId: hostContract.slots.dashboard.routeId,
+      description: '工作台主内容区扩展模块。',
+    },
+  ],
+};
 
 interface PluginRouteEntry {
   contribution: PluginRouteContribution;

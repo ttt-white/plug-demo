@@ -1,5 +1,6 @@
 import type { DemoStatus } from '@fms/plugin-contracts';
-import type { PluginUser } from '@fms/plugin-sdk';
+import { parseRemotePluginManifest, type PluginUser } from '@fms/plugin-sdk';
+import { createRemotePluginConfiguration, type RemotePluginConfiguration } from '@/plugins/remote-plugin-catalog';
 
 interface MockAccount {
   password: string;
@@ -38,6 +39,37 @@ export const demoStatus: DemoStatus = {
 };
 
 const PLUGIN_STATE_KEY = 'fms.mock.plugin-states';
+const REMOTE_PLUGIN_CONFIG_KEY = 'fms.mock.remote-plugin-configurations';
+
+function parseRemotePluginConfiguration(value: unknown): RemotePluginConfiguration | null {
+  if (typeof value !== 'object' || value === null || !('origin' in value) || !('manifest' in value)) return null;
+  if (typeof value.origin !== 'string') return null;
+  try {
+    return createRemotePluginConfiguration(value.origin, parseRemotePluginManifest(value.manifest));
+  } catch {
+    return null;
+  }
+}
+
+export function readRemotePluginConfigurations() {
+  const stored = localStorage.getItem(REMOTE_PLUGIN_CONFIG_KEY);
+  if (stored === null) return [];
+  try {
+    const parsed = JSON.parse(stored) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((value) => {
+      const configuration = parseRemotePluginConfiguration(value);
+      return configuration ? [configuration] : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function writeRemotePluginConfigurations(configurations: readonly RemotePluginConfiguration[]) {
+  localStorage.setItem(REMOTE_PLUGIN_CONFIG_KEY, JSON.stringify(configurations));
+  return structuredClone(configurations) as RemotePluginConfiguration[];
+}
 
 export function readPluginStates(installedPluginIds: readonly string[]) {
   const defaults = installedPluginIds.map((id) => ({ id, enabled: true }));
@@ -61,4 +93,19 @@ export function writePluginState(id: string, enabled: boolean, installedPluginId
   const next = readPluginStates(installedPluginIds).map((state) => (state.id === id ? { ...state, enabled } : state));
   localStorage.setItem(PLUGIN_STATE_KEY, JSON.stringify(next));
   return next;
+}
+
+export function removePluginState(id: string) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PLUGIN_STATE_KEY) ?? '[]') as unknown;
+    if (!Array.isArray(parsed)) return;
+    localStorage.setItem(
+      PLUGIN_STATE_KEY,
+      JSON.stringify(
+        parsed.filter((state) => !(typeof state === 'object' && state !== null && 'id' in state && state.id === id)),
+      ),
+    );
+  } catch {
+    localStorage.removeItem(PLUGIN_STATE_KEY);
+  }
 }

@@ -2,8 +2,13 @@ import { HOST_ROUTES, HOST_SLOTS } from '@/app/route-catalog';
 import { useAuth } from '@/auth/AuthProvider';
 import { apiClient } from '@/services/api-client';
 import { createWorkspaceQueryClient } from '@/services/query-client';
-import { remotePluginDefinitions, remotePluginHealthInterval } from '@/plugins/remote-plugin-catalog';
-import { inspectRemotePlugins } from '@/plugins/remote-plugin-loader';
+import {
+  createRemotePluginDefinition,
+  remotePluginHealthInterval,
+  type RemotePluginConfiguration,
+  type RemotePluginDefinition,
+} from '@/plugins/remote-plugin-catalog';
+import { discoverRemotePluginConfiguration, inspectRemotePlugins } from '@/plugins/remote-plugin-loader';
 import {
   createPluginChannelBus,
   loadPluginRegistrations,
@@ -52,11 +57,15 @@ interface PluginRegistryContextValue {
   statesState: PluginStatesState;
   loading: boolean;
   refreshing: boolean;
+  remoteConfigurations: RemotePluginConfiguration[];
   routes: ResolvedRoute[];
   query: PluginQueryClient;
   modulesFor(routeId: string, slotId: string, targetPluginId?: string): ResolvedModule[];
   runtimeFor(pluginId: string, renderSlot: PluginExtensionRuntime['renderSlot']): PluginRuntime | null;
   reloadStates(): Promise<void>;
+  importRemotePlugin(origin: string): Promise<void>;
+  updateRemotePlugin(id: string, origin: string): Promise<void>;
+  removeRemotePlugin(id: string): Promise<void>;
   setEnabled(id: string, enabled: boolean): Promise<void>;
 }
 
@@ -81,22 +90,43 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
   const [registrations, setRegistrations] = useState<PluginRegistration[]>([]);
   const [registrationsLoading, setRegistrationsLoading] = useState(true);
   const [registrationsRefreshing, setRegistrationsRefreshing] = useState(false);
+  const [remoteConfigurations, setRemoteConfigurations] = useState<RemotePluginConfiguration[]>([]);
+  const [remoteConfigurationOwnerId, setRemoteConfigurationOwnerId] = useState<string | null>(null);
+  const remoteDefinitions = useRef<RemotePluginDefinition[]>([]);
   const registrationRefreshPromise = useRef<Promise<void> | null>(null);
   const registrationRequestSequence = useRef(0);
+  const remoteConfigurationRequestSequence = useRef(0);
   const stateRequestSequence = useRef(0);
   const channelBus = useMemo(() => createPluginChannelBus(), []);
   const query = useMemo(() => createWorkspaceQueryClient(user?.id ?? null), [user?.id]);
 
   useEffect(() => () => query.clear(), [query]);
 
-  const refreshRegistrations = useCallback(async (foreground = false) => {
+  const syncRemoteDefinitions = useCallback((configurations: readonly RemotePluginConfiguration[]) => {
+    const previous = new Map(remoteDefinitions.current.map((definition) => [definition.id, definition]));
+    const next = configurations.map((configuration) => {
+      const existing = previous.get(configuration.manifest.id);
+      if (existing && JSON.stringify(existing.configuration) === JSON.stringify(configuration)) {
+        previous.delete(configuration.manifest.id);
+        return existing;
+      }
+      existing?.invalidate();
+      previous.delete(configuration.manifest.id);
+      return createRemotePluginDefinition(configuration);
+    });
+    for (const removed of previous.values()) removed.invalidate();
+    remoteDefinitions.current = next;
+    return next;
+  }, []);
+
+  const refreshRegistrations = useCallback(async (foreground = false, definitions = remoteDefinitions.current) => {
     if (foreground) setRegistrationsRefreshing(true);
     let request = registrationRefreshPromise.current;
     if (!request) {
       const requestSequence = ++registrationRequestSequence.current;
       request = (async () => {
         try {
-          const remoteDescriptors = await inspectRemotePlugins(remotePluginDefinitions);
+          const remoteDescriptors = await inspectRemotePlugins(definitions);
           const nextRegistrations = await loadPluginRegistrations(
             [...installedPluginDescriptors, ...remoteDescriptors],
             PLUGIN_VALIDATION_OPTIONS,
@@ -123,13 +153,26 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refreshRegistrations(true);
-    const interval = window.setInterval(() => void refreshRegistrations(), remotePluginHealthInterval);
+    const interval = window.setInterval(
+      () => void refreshRegistrations(false, remoteDefinitions.current),
+      remotePluginHealthInterval,
+    );
     return () => {
       window.clearInterval(interval);
       registrationRequestSequence.current += 1;
       registrationRefreshPromise.current = null;
     };
   }, [refreshRegistrations]);
+
+  const applyRemoteConfigurations = useCallback(
+    async (configurations: RemotePluginConfiguration[]) => {
+      const definitions = syncRemoteDefinitions(configurations);
+      setRemoteConfigurations(configurations);
+      await registrationRefreshPromise.current;
+      await refreshRegistrations(true, definitions);
+    },
+    [refreshRegistrations, syncRemoteDefinitions],
+  );
 
   const reloadEnabledStates = useCallback(async () => {
     if (!user) return;
@@ -156,18 +199,40 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const reloadStates = useCallback(
-    async () => Promise.all([reloadEnabledStates(), refreshRegistrations(true)]).then(() => undefined),
-    [refreshRegistrations, reloadEnabledStates],
-  );
+  const reloadRemoteConfigurations = useCallback(async () => {
+    if (!user) return;
+    const ownerId = user.id;
+    const requestSequence = ++remoteConfigurationRequestSequence.current;
+    const response = await apiClient.get<{ plugins: RemotePluginConfiguration[] }>('/api/remote-plugins');
+    if (requestSequence !== remoteConfigurationRequestSequence.current) return;
+    await applyRemoteConfigurations(response.plugins);
+    if (requestSequence === remoteConfigurationRequestSequence.current) setRemoteConfigurationOwnerId(ownerId);
+  }, [applyRemoteConfigurations, user]);
+
+  const reloadStates = useCallback(async () => {
+    try {
+      await reloadRemoteConfigurations();
+    } catch (reason) {
+      console.error('读取远程插件配置失败', reason);
+      if (user) setRemoteConfigurationOwnerId(user.id);
+    }
+    await reloadEnabledStates();
+  }, [reloadEnabledStates, reloadRemoteConfigurations, user]);
 
   useEffect(() => {
     if (!user) return;
-    void reloadEnabledStates();
+    void reloadStates();
     return () => {
+      remoteConfigurationRequestSequence.current += 1;
       stateRequestSequence.current += 1;
+      registrationRequestSequence.current += 1;
+      registrationRefreshPromise.current = null;
+      syncRemoteDefinitions([]);
+      setRemoteConfigurations([]);
+      setRemoteConfigurationOwnerId(null);
+      setRegistrations((current) => current.filter(({ source }) => source.sourceType !== 'remote'));
     };
-  }, [reloadEnabledStates, user]);
+  }, [reloadStates, syncRemoteDefinitions, user]);
 
   const statesState = useMemo<PluginStatesState>(() => {
     if (!user || ownedStates.ownerId !== user.id) return IDLE_PLUGIN_STATES;
@@ -177,6 +242,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
   const states = statesState.states;
   const loading =
     registrationsLoading ||
+    Boolean(user && remoteConfigurationOwnerId !== user.id) ||
     Boolean(user && (statesState.status === 'idle' || (statesState.status === 'loading' && statesState.states.length === 0)));
   const enabledIds = useMemo(() => new Set(states.filter((state) => state.enabled).map((state) => state.id)), [states]);
   const activeRegistrations = useMemo(
@@ -216,6 +282,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
       statesState,
       loading,
       refreshing: registrationsRefreshing || statesState.status === 'loading',
+      remoteConfigurations,
       routes,
       query,
       modulesFor(routeId, slotId, targetPluginId) {
@@ -294,6 +361,31 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
         };
       },
       reloadStates,
+      async importRemotePlugin(origin) {
+        const configuration = await discoverRemotePluginConfiguration(origin);
+        const response = await apiClient.post<{ plugins: RemotePluginConfiguration[] }>('/api/remote-plugins', configuration);
+        await applyRemoteConfigurations(response.plugins);
+        await reloadEnabledStates();
+      },
+      async updateRemotePlugin(id, origin) {
+        const configuration = await discoverRemotePluginConfiguration(origin);
+        if (configuration.manifest.id !== id) {
+          throw new Error(`新地址返回了其他插件：${configuration.manifest.id}`);
+        }
+        const response = await apiClient.put<{ plugins: RemotePluginConfiguration[] }>(
+          `/api/remote-plugins/${encodeURIComponent(id)}`,
+          configuration,
+        );
+        await applyRemoteConfigurations(response.plugins);
+        await reloadEnabledStates();
+      },
+      async removeRemotePlugin(id) {
+        const response = await apiClient.delete<{ plugins: RemotePluginConfiguration[] }>(
+          `/api/remote-plugins/${encodeURIComponent(id)}`,
+        );
+        await applyRemoteConfigurations(response.plugins);
+        await reloadEnabledStates();
+      },
       async setEnabled(id, enabled) {
         const response = await apiClient.patch<{ plugins: PluginState[] }>(`/api/plugins/${id}`, { enabled });
         if (user) {
@@ -304,6 +396,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     }),
     [
       activeRegistrations,
+      applyRemoteConfigurations,
       can,
       channelBus,
       loading,
@@ -311,7 +404,9 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
       query,
       registrations,
       registrationsRefreshing,
+      reloadEnabledStates,
       reloadStates,
+      remoteConfigurations,
       routeLinks,
       routes,
       states,

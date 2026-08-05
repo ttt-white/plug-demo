@@ -1,15 +1,17 @@
 import { AuthProvider } from '@/auth/AuthProvider';
-import { demoStatus } from '@/mocks/data';
+import { demoStatus, writeRemotePluginConfigurations } from '@/mocks/data';
 import { server } from '@/mocks/server';
 import { PluginRegistryProvider } from '@/plugins/PluginRegistryProvider';
+import type { RemotePluginConfiguration } from '@/plugins/remote-plugin-catalog';
 import { TOKEN_STORAGE_KEY } from '@/services/api-client';
-import { render, screen, waitFor } from '@testing-library/react';
+import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from '@fms/plugin-sdk';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { ConfigProvider } from 'antd';
 import axe from 'axe-core';
 import { http, HttpResponse } from 'msw';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
 
 function LocationProbe() {
@@ -34,6 +36,18 @@ function renderApp(path = '/login') {
 
 const setupUser = () => userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
 
+const threeConfiguration = {
+  origin: 'http://localhost:3100',
+  manifest: {
+    schemaVersion: REMOTE_PLUGIN_MANIFEST_VERSION,
+    id: 'three',
+    name: 'three',
+    version: '1.0.0',
+    apiVersion: PLUGIN_API_VERSION,
+    remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+  },
+} as const satisfies RemotePluginConfiguration;
+
 async function loginAsAdmin() {
   const user = setupUser();
   await user.click(screen.getByRole('button', { name: '登录工作区' }));
@@ -46,6 +60,23 @@ async function expectNoAxeViolations(container: HTMLElement) {
 }
 
 describe('workspace flows', () => {
+  beforeEach(() => {
+    writeRemotePluginConfigurations([threeConfiguration]);
+    server.use(http.get('http://localhost:3100/fms-plugin.json', () => HttpResponse.json(threeConfiguration.manifest)));
+  });
+
+  it('starts without an implicitly configured remote plugin', async () => {
+    writeRemotePluginConfigurations([]);
+    renderApp('/plugins');
+    await loginAsAdmin();
+
+    expect(await screen.findByRole('heading', { name: '插件中心' })).toBeInTheDocument();
+    expect(screen.getByText('@fms/plugin-one')).toBeInTheDocument();
+    expect(screen.getByText('@fms/plugin-two')).toBeInTheDocument();
+    expect(screen.queryByText('remote:three')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '外部插件 three' })).not.toBeInTheDocument();
+  });
+
   it('keeps the login and authenticated shell accessible', async () => {
     const login = renderApp();
     expect(await screen.findByRole('heading', { name: 'FMS Workspace 登录' })).toBeInTheDocument();
@@ -114,6 +145,25 @@ describe('workspace flows', () => {
     await user.click(screen.getByRole('link', { name: '插件中心' }));
     expect(await screen.findByText('离线')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '停用three' })).toBeDisabled();
+  });
+
+  it('removes a remote plugin and restores it by importing its service address', async () => {
+    renderApp('/plugins');
+    const user = await loginAsAdmin();
+    expect(await screen.findByText('http://localhost:3100')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '删除three' }));
+    await user.click(await screen.findByRole('button', { name: /^删\s*除$/ }));
+    await waitFor(() => expect(screen.queryByText('remote:three')).not.toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: '外部插件 three' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '导入' }));
+    const dialog = screen.getByRole('dialog', { name: '导入远程插件' });
+    await user.type(within(dialog).getByRole('textbox', { name: '服务地址' }), 'http://localhost:3100');
+    await user.click(within(dialog).getByRole('button', { name: /^导\s*入$/ }));
+
+    expect(await screen.findByText('remote:three')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '外部插件 three' })).toBeInTheDocument();
   });
 
   it('disables a plugin and removes its route entry', async () => {

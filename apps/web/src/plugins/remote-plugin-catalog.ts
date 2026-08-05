@@ -1,7 +1,13 @@
 import { loadRemote, registerRemotes } from '@module-federation/runtime';
-import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@fms/plugin-sdk';
+import type { RemotePluginManifest, WorkspacePlugin } from '@fms/plugin-sdk';
+
+export interface RemotePluginConfiguration {
+  origin: string;
+  manifest: RemotePluginManifest;
+}
 
 export interface RemotePluginDefinition {
+  configuration: RemotePluginConfiguration;
   id: string;
   origin: string;
   manifestUrl: string;
@@ -12,12 +18,6 @@ export interface RemotePluginDefinition {
   load(): Promise<WorkspacePlugin>;
 }
 
-function parseRemoteOrigin(value: string | undefined) {
-  const url = new URL(value?.trim() || 'http://localhost:3100');
-  if (!['http:', 'https:'].includes(url.protocol)) throw new Error(`远程插件地址必须使用 http 或 https：${url.href}`);
-  return url.origin;
-}
-
 function parseHealthInterval(value: string | undefined) {
   const milliseconds = Number(value ?? 5_000);
   if (!Number.isInteger(milliseconds) || milliseconds < 1_000 || milliseconds > 60_000) {
@@ -26,68 +26,91 @@ function parseHealthInterval(value: string | undefined) {
   return milliseconds;
 }
 
+export function normalizeRemotePluginOrigin(value: string) {
+  const input = value.trim();
+  if (!input) throw new Error('请输入远程插件服务地址');
+  const url = new URL(input);
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error(`远程插件地址必须使用 http 或 https：${url.href}`);
+  url.hash = '';
+  url.search = '';
+  url.pathname = url.pathname.replace(/\/fms-plugin\.json\/?$/, '').replace(/\/$/, '');
+  return url.href.replace(/\/$/, '');
+}
+
+export function createRemotePluginConfiguration(origin: string, manifest: RemotePluginManifest): RemotePluginConfiguration {
+  return { origin: normalizeRemotePluginOrigin(origin), manifest };
+}
+
+export function remotePluginManifestUrl(origin: string) {
+  return `${normalizeRemotePluginOrigin(origin)}/fms-plugin.json`;
+}
+
+function remoteEntryUrl(configuration: RemotePluginConfiguration) {
+  const entry = new URL(configuration.manifest.remote.entry, `${configuration.origin}/`);
+  if (!['http:', 'https:'].includes(entry.protocol)) {
+    throw new Error(`远程插件入口必须使用 http 或 https：${entry.href}`);
+  }
+  return entry.href;
+}
+
+const registeredRemoteNames = new Set<string>();
+
+export function createRemotePluginDefinition(configuration: RemotePluginConfiguration): RemotePluginDefinition {
+  const { manifest, origin } = configuration;
+  const entryUrl = remoteEntryUrl(configuration);
+  const exposedModule = manifest.remote.module;
+  let loadPromise: Promise<WorkspacePlugin> | null = null;
+  let revision = 0;
+
+  function invalidate() {
+    if (!loadPromise) return;
+    loadPromise = null;
+    revision += 1;
+  }
+
+  function load() {
+    if (loadPromise) return loadPromise;
+    const entry = new URL(entryUrl);
+    entry.searchParams.set('fms-revision', String(revision));
+    const force = revision > 0 || registeredRemoteNames.has(manifest.remote.name);
+    registerRemotes(
+      [
+        {
+          name: manifest.remote.name,
+          entry: entry.href,
+          type: 'module',
+          entryGlobalName: manifest.remote.name,
+          shareScope: 'default',
+        },
+      ],
+      { force },
+    );
+    registeredRemoteNames.add(manifest.remote.name);
+    const requestId = `${manifest.remote.name}/${exposedModule.replace(/^\.\//, '')}`;
+    loadPromise = loadRemote<{ plugin: WorkspacePlugin }>(requestId)
+      .then((remote) => {
+        if (!remote?.plugin) throw new Error('远程模块没有导出 plugin');
+        return remote.plugin;
+      })
+      .catch((reason: unknown) => {
+        loadPromise = null;
+        revision += 1;
+        throw reason;
+      });
+    return loadPromise;
+  }
+
+  return {
+    configuration,
+    id: manifest.id,
+    origin,
+    manifestUrl: remotePluginManifestUrl(origin),
+    remoteName: manifest.remote.name,
+    entryUrl,
+    exposedModule,
+    invalidate,
+    load,
+  };
+}
+
 export const remotePluginHealthInterval = parseHealthInterval(import.meta.env['VITE_FMS_PLUGIN_HEALTH_INTERVAL_MS']);
-
-const threeOrigin = parseRemoteOrigin(import.meta.env['VITE_FMS_PLUGIN_THREE_ORIGIN']);
-const threeEntryUrl = `${threeOrigin}/remoteEntry.js`;
-let threeLoadPromise: Promise<WorkspacePlugin> | null = null;
-let threeRemoteRevision = 0;
-
-function invalidateThree() {
-  if (!threeLoadPromise) return;
-  threeLoadPromise = null;
-  threeRemoteRevision += 1;
-}
-
-function loadThree() {
-  if (threeLoadPromise) return threeLoadPromise;
-  const entry = new URL(threeEntryUrl);
-  entry.searchParams.set('fms-revision', String(threeRemoteRevision));
-  registerRemotes(
-    [
-      {
-        name: 'plugin_three',
-        entry: entry.href,
-        type: 'module',
-        entryGlobalName: 'plugin_three',
-        shareScope: 'default',
-      },
-    ],
-    { force: threeRemoteRevision > 0 },
-  );
-  threeLoadPromise = loadRemote<{ plugin: WorkspacePlugin }>('plugin_three/plugin')
-    .then((remote) => {
-      if (!remote?.plugin) throw new Error('远程模块没有导出 plugin');
-      return remote.plugin;
-    })
-    .catch((reason: unknown) => {
-      threeLoadPromise = null;
-      threeRemoteRevision += 1;
-      throw reason;
-    });
-  return threeLoadPromise;
-}
-
-export const remotePluginDefinitions: readonly RemotePluginDefinition[] = [
-  {
-    id: 'three',
-    origin: threeOrigin,
-    manifestUrl: `${threeOrigin}/fms-plugin.json`,
-    remoteName: 'plugin_three',
-    entryUrl: threeEntryUrl,
-    exposedModule: './plugin',
-    invalidate: invalidateThree,
-    load: loadThree,
-  },
-];
-
-export const configuredPluginIds = ['one', 'two', ...remotePluginDefinitions.map(({ id }) => id)] satisfies readonly string[];
-
-export const remotePluginManifestFixture = {
-  schemaVersion: 1,
-  id: 'three',
-  name: 'three',
-  version: '1.0.0',
-  apiVersion: PLUGIN_API_VERSION,
-  remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
-} as const;

@@ -18,6 +18,7 @@
     "external:typecheck": "pnpm --dir ../扩展插件/three typecheck",
     "external:test": "pnpm --dir ../扩展插件/three test",
     "external:lint": "pnpm --dir ../扩展插件/three lint",
+    "external:sync": "pnpm --filter @fms/plugin-sdk build && pnpm --filter @fms/plugin-contracts build && node scripts/sync-external-vendor.mjs",
     "external:setup": "pnpm external:install && pnpm external:build",
     "commit": "git add . && lefthook run pre-commit && git add . && czg --no-verify"
   },

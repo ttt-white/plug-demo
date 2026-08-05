@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   PLUGIN_API_VERSION,
   REMOTE_PLUGIN_MANIFEST_VERSION,
+  catalogPluginContributions,
   createPluginChannelBus,
   loadPluginRegistrations,
   parseRemotePluginManifest,
@@ -54,6 +55,72 @@ describe('remote plugin manifest', () => {
         remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
       }),
     ).toThrow();
+  });
+});
+
+describe('catalogPluginContributions', () => {
+  it('resolves host and cross-plugin contribution relationships', () => {
+    const one = createPlugin('one');
+    const two = createPlugin('two');
+    two.routes = [{ id: 'two', path: '/plugin-two', permission: 'two:view', menu: { label: 'Two', order: 20 }, load }];
+    two.extensionSlots = [{ id: 'two.demo', routeId: 'two', description: 'Two demo slot' }];
+    const three = createPlugin('three');
+    three.routes = [{ id: 'three', path: '/plugin-three', permission: 'three:view', menu: { label: 'Three', order: 30 }, load }];
+    three.routeLinks = [
+      {
+        id: 'two.three',
+        parentRoute: { pluginId: 'two', routeId: 'two' },
+        targetRoute: { pluginId: 'three', routeId: 'three' },
+        menu: { label: 'Open three', order: 10 },
+      },
+    ];
+    three.modules = [{ id: 'three.two-demo', targetPluginId: 'two', routeId: 'two', slotId: 'two.demo', priority: 20, load }];
+
+    const catalog = catalogPluginContributions([one, two, three], {
+      id: 'host',
+      name: 'Host',
+      routes: [{ id: 'dashboard', path: '/dashboard', label: 'Dashboard' }],
+      extensionSlots: [{ id: 'dashboard.demo', routeId: 'dashboard', description: 'Dashboard demo slot' }],
+    });
+
+    expect(catalog.pages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provider: expect.objectContaining({ id: 'host' }), routeId: 'dashboard' }),
+        expect.objectContaining({ provider: expect.objectContaining({ id: 'two' }), routeId: 'two' }),
+      ]),
+    );
+    expect(catalog.routeLinks[0]).toMatchObject({
+      provider: { id: 'three' },
+      parent: { owner: { id: 'two' }, routeId: 'two', path: '/plugin-two' },
+      target: { owner: { id: 'three' }, routeId: 'three', path: '/plugin-three' },
+    });
+    expect(catalog.modules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'one.module',
+          target: expect.objectContaining({
+            owner: expect.objectContaining({ id: 'host' }),
+            routeId: 'dashboard',
+            slotId: 'dashboard.demo',
+          }),
+        }),
+        expect.objectContaining({
+          id: 'three.two-demo',
+          target: expect.objectContaining({
+            owner: expect.objectContaining({ id: 'two' }),
+            routeId: 'two',
+            slotId: 'two.demo',
+          }),
+          priority: 20,
+        }),
+      ]),
+    );
+    expect(catalog.slots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provider: expect.objectContaining({ id: 'host' }), slotId: 'dashboard.demo' }),
+        expect.objectContaining({ provider: expect.objectContaining({ id: 'two' }), slotId: 'two.demo' }),
+      ]),
+    );
   });
 });
 

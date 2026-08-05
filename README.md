@@ -21,7 +21,9 @@ pnpm install
 pnpm dev
 ```
 
-three 地址为 [http://localhost:3100](http://localhost:3100)，同一服务同时提供 standalone 页面、`fms-plugin.json` 和 `remoteEntry.js`。主体每 5 秒检查一次 manifest，仅在服务健康且注册校验通过时加载远程模块。关闭 `3100` 后，three 会显示为离线，其菜单、路由和插槽模块会自动移除；恢复服务后会自动重新注册。
+three 地址为 [http://localhost:3100](http://localhost:3100)，同一服务同时提供 standalone 页面、`fms-plugin.json` 和 `remoteEntry.js`。启动后使用管理员账号在“插件中心”导入 `http://localhost:3100`。主体不会预置远程插件；管理员可以导入任意远程服务，也可以修改地址或删除已有配置。服务地址支持根路径（如 `https://host/plugins/tool`）或完整 manifest 地址（如 `https://host/plugins/tool/fms-plugin.json`）。
+
+主体每 5 秒检查一次各远程插件的 manifest，仅在服务健康且注册校验通过时加载 Module Federation 模块。关闭远程服务后，配置仍保留并显示为“离线”，但菜单、路由和插槽模块会自动移除；恢复服务后会自动重新注册。只有在插件中心删除远程配置后，该插件记录才会消失。
 
 也可以在主体目录执行 `pnpm dev:all` 同时启动两个工程。
 
@@ -40,7 +42,7 @@ three 地址为 [http://localhost:3100](http://localhost:3100)，同一服务同
 | one      | 向宿主插槽贡献模块、读取 `runtime.user/can/api/query`、公共消息 |
 | two      | 贡献页面路由、接收路由参数与定向消息、公共消息、开放插件插槽    |
 | three    | 远程插件、贡献页面入口、向 two 注入模块、类型化导航与消息       |
-| 插件中心 | 本地发现、远程健康检查、协议校验、插件启停                      |
+| 插件中心 | 本地发现、远程插件导入与改址、健康检查、协议校验、插件启停      |
 
 在 `two` 页面点击 three 注入模块中的按钮，可以直接观察定向消息和公共广播；进入 `three` 后可携带 query 参数返回 `two`。
 
@@ -56,7 +58,7 @@ three 地址为 [http://localhost:3100](http://localhost:3100)，同一服务同
 扩展插件/three/             可独立运行和发布的外部插件
 ```
 
-one/two 由宿主 Vite 从 `apps/web/package.json` 的直接依赖中发现。three 不属于主体依赖，由 Module Federation 在浏览器运行时从 `3100` 加载；共享的 React、Ant Design、SDK 和 contracts 使用单例。
+one/two 由宿主 Vite 从 `apps/web/package.json` 的直接依赖中发现。远程插件不属于主体依赖，宿主只根据插件中心保存的 manifest 配置在浏览器运行时通过 Module Federation 加载；共享的 React、Ant Design、SDK 和 contracts 使用单例。
 
 ## 检查
 

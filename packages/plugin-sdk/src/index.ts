@@ -376,6 +376,21 @@ export interface PluginRouteReference<TPluginId extends string = string, TRouteI
   readonly routeId: TRouteId;
 }
 
+/** 指向宿主页面的类型化引用；宿主页面不属于任何插件。 */
+export interface HostRouteReference<TRouteId extends string = string> {
+  /** 宿主路由目录中的页面 ID。 */
+  readonly routeId: TRouteId;
+}
+
+/** 指向宿主页面内开放插槽的类型化引用。 */
+export interface HostSlotReference<
+  TRouteId extends string = string,
+  TSlotId extends string = string,
+> extends HostRouteReference<TRouteId> {
+  /** 宿主插槽白名单中的插槽 ID。 */
+  readonly slotId: TSlotId;
+}
+
 /**
  * 指向某个插件页面内开放插槽的类型化引用。
  *
@@ -476,6 +491,75 @@ export interface WorkspacePlugin {
   modules?: PluginModuleContribution[];
   /** 插件允许其他插件注入内容的位置。 */
   extensionSlots?: PluginExtensionSlotContribution[];
+}
+
+/** 宿主向贡献目录提供的页面和插槽元数据。 */
+export interface PluginContributionCatalogHost {
+  /** 宿主在贡献关系中使用的稳定 ID。 */
+  id: string;
+  /** 宿主展示名称。 */
+  name: string;
+  /** 可作为插件模块目标的宿主页面。 */
+  routes: readonly {
+    id: string;
+    path: string;
+    label: string;
+  }[];
+  /** 宿主页面开放的插槽。 */
+  extensionSlots: readonly {
+    id: string;
+    routeId: string;
+    description?: string;
+  }[];
+}
+
+/** 贡献目录中的插件或宿主身份。 */
+export interface PluginContributionCatalogOwner {
+  id: string;
+  name: string;
+  kind: 'host' | 'plugin';
+}
+
+/** 贡献关系中已解析的页面引用。 */
+export interface PluginContributionCatalogRoute {
+  owner: PluginContributionCatalogOwner;
+  routeId: string;
+  label: string;
+  path?: string;
+}
+
+export interface PluginContributionCatalog {
+  pages: Array<{
+    provider: PluginContributionCatalogOwner;
+    routeId: string;
+    path: string;
+    label: string;
+    permission?: string;
+    order?: number;
+  }>;
+  routeLinks: Array<{
+    provider: PluginContributionCatalogOwner;
+    id: string;
+    parent: PluginContributionCatalogRoute;
+    target: PluginContributionCatalogRoute;
+    label: string;
+    permission?: string;
+    order: number;
+  }>;
+  modules: Array<{
+    provider: PluginContributionCatalogOwner;
+    id: string;
+    target: PluginContributionCatalogRoute & { slotId: string };
+    permission?: string;
+    priority: number;
+  }>;
+  slots: Array<{
+    provider: PluginContributionCatalogOwner;
+    route: PluginContributionCatalogRoute;
+    slotId: string;
+    ownerModuleId?: string;
+    description?: string;
+  }>;
 }
 
 /** 远程插件服务公开的最小发现信息。 */
@@ -586,4 +670,122 @@ export function sortModuleContributions(modules: readonly PluginModuleContributi
     const priorityDifference = (right.priority ?? 0) - (left.priority ?? 0);
     return priorityDifference || left.id.localeCompare(right.id);
   });
+}
+
+/**
+ * 将宿主和插件的页面、入口、模块与插槽整理为可展示、可生成文档的关系目录。
+ */
+export function catalogPluginContributions(
+  plugins: readonly WorkspacePlugin[],
+  host: PluginContributionCatalogHost,
+): PluginContributionCatalog {
+  const hostOwner: PluginContributionCatalogOwner = { id: host.id, name: host.name, kind: 'host' };
+  const pluginOwners = new Map(
+    plugins.map((plugin) => [
+      plugin.manifest.id,
+      { id: plugin.manifest.id, name: plugin.manifest.name, kind: 'plugin' } satisfies PluginContributionCatalogOwner,
+    ]),
+  );
+  const routes = new Map<string, PluginContributionCatalogRoute>();
+  const routeKey = (pluginId: string, routeId: string) => `${pluginId}\0${routeId}`;
+
+  for (const route of host.routes) {
+    routes.set(routeKey(host.id, route.id), {
+      owner: hostOwner,
+      routeId: route.id,
+      label: route.label,
+      path: route.path,
+    });
+  }
+  for (const plugin of plugins) {
+    const owner = pluginOwners.get(plugin.manifest.id)!;
+    for (const route of plugin.routes ?? []) {
+      routes.set(routeKey(owner.id, route.id), {
+        owner,
+        routeId: route.id,
+        label: route.menu.label,
+        path: route.path,
+      });
+    }
+  }
+
+  const resolveRoute = (pluginId: string, routeId: string): PluginContributionCatalogRoute =>
+    routes.get(routeKey(pluginId, routeId)) ?? {
+      owner: pluginOwners.get(pluginId) ?? { id: pluginId, name: pluginId, kind: pluginId === host.id ? 'host' : 'plugin' },
+      routeId,
+      label: routeId,
+    };
+  const pages: PluginContributionCatalog['pages'] = [
+    ...host.routes.map((route) => ({
+      provider: hostOwner,
+      routeId: route.id,
+      path: route.path,
+      label: route.label,
+    })),
+    ...plugins.flatMap((plugin) => {
+      const provider = pluginOwners.get(plugin.manifest.id)!;
+      return (plugin.routes ?? []).map((route) => ({
+        provider,
+        routeId: route.id,
+        path: route.path,
+        label: route.menu.label,
+        permission: route.permission,
+        order: route.menu.order,
+      }));
+    }),
+  ].sort((left, right) => left.provider.id.localeCompare(right.provider.id) || left.routeId.localeCompare(right.routeId));
+  const routeLinks = plugins
+    .flatMap((plugin) => {
+      const provider = pluginOwners.get(plugin.manifest.id)!;
+      return (plugin.routeLinks ?? []).map((routeLink) => ({
+        provider,
+        id: routeLink.id,
+        parent: resolveRoute(routeLink.parentRoute.pluginId, routeLink.parentRoute.routeId),
+        target: resolveRoute(routeLink.targetRoute.pluginId, routeLink.targetRoute.routeId),
+        label: routeLink.menu.label,
+        ...(routeLink.permission ? { permission: routeLink.permission } : {}),
+        order: routeLink.menu.order,
+      }));
+    })
+    .sort((left, right) => left.provider.id.localeCompare(right.provider.id) || left.id.localeCompare(right.id));
+  const modules = plugins
+    .flatMap((plugin) => {
+      const provider = pluginOwners.get(plugin.manifest.id)!;
+      return (plugin.modules ?? []).map((module) => ({
+        provider,
+        id: module.id,
+        target: {
+          ...resolveRoute(module.targetPluginId ?? host.id, module.routeId),
+          slotId: module.slotId,
+        },
+        ...(module.permission ? { permission: module.permission } : {}),
+        priority: module.priority ?? 0,
+      }));
+    })
+    .sort((left, right) => left.provider.id.localeCompare(right.provider.id) || left.id.localeCompare(right.id));
+  const slots: PluginContributionCatalog['slots'] = [
+    ...host.extensionSlots.map((slot) => ({
+      provider: hostOwner,
+      route: resolveRoute(host.id, slot.routeId),
+      slotId: slot.id,
+      ...(slot.description ? { description: slot.description } : {}),
+    })),
+    ...plugins.flatMap((plugin) => {
+      const provider = pluginOwners.get(plugin.manifest.id)!;
+      return (plugin.extensionSlots ?? []).map((slot) => ({
+        provider,
+        route: resolveRoute(plugin.manifest.id, slot.routeId),
+        slotId: slot.id,
+        ...(slot.ownerModuleId ? { ownerModuleId: slot.ownerModuleId } : {}),
+        ...(slot.description ? { description: slot.description } : {}),
+      }));
+    }),
+  ].sort(
+    (left, right) =>
+      left.provider.id.localeCompare(right.provider.id) ||
+      left.route.routeId.localeCompare(right.route.routeId) ||
+      left.slotId.localeCompare(right.slotId),
+  );
+
+  return { pages, routeLinks, modules, slots };
 }

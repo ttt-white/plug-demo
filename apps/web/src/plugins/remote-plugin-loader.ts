@@ -7,13 +7,19 @@ import {
   type RemotePluginManifest,
 } from '@fms/plugin-sdk';
 import type { RemotePluginDefinition } from './remote-plugin-catalog';
+import {
+  createRemotePluginConfiguration,
+  normalizeRemotePluginOrigin,
+  remotePluginManifestUrl,
+  type RemotePluginConfiguration,
+} from './remote-plugin-catalog';
 
 const HEALTH_TIMEOUT_MS = 2_000;
 
 function sourceMetadata(definition: RemotePluginDefinition, manifest?: RemotePluginManifest): PluginPackageMetadata {
   return {
     packageName: `remote:${definition.id}`,
-    packageVersion: manifest?.version ?? '0.0.0',
+    packageVersion: manifest?.version ?? definition.configuration.manifest.version,
     declaredPluginId: manifest?.id ?? definition.id,
     declaredApiVersion: manifest?.apiVersion ?? PLUGIN_API_VERSION,
     sourceType: 'remote',
@@ -61,7 +67,7 @@ function validateRemoteIdentity(definition: RemotePluginDefinition, manifest: Re
       ),
     );
   }
-  const entryUrl = new URL(manifest.remote.entry, definition.origin).href;
+  const entryUrl = new URL(manifest.remote.entry, `${definition.origin}/`).href;
   if (entryUrl !== definition.entryUrl) {
     diagnostics.push(
       diagnostic(
@@ -75,11 +81,11 @@ function validateRemoteIdentity(definition: RemotePluginDefinition, manifest: Re
   return diagnostics;
 }
 
-async function fetchRemoteManifest(definition: RemotePluginDefinition, fetcher: typeof fetch) {
+async function fetchManifest(url: string, fetcher: typeof fetch) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
   try {
-    const response = await fetcher(definition.manifestUrl, {
+    const response = await fetcher(url, {
       cache: 'no-store',
       headers: { Accept: 'application/json' },
       signal: controller.signal,
@@ -91,13 +97,22 @@ async function fetchRemoteManifest(definition: RemotePluginDefinition, fetcher: 
   }
 }
 
+export async function discoverRemotePluginConfiguration(
+  serviceAddress: string,
+  fetcher: typeof fetch = fetch,
+): Promise<RemotePluginConfiguration> {
+  const origin = normalizeRemotePluginOrigin(serviceAddress);
+  const manifest = await fetchManifest(remotePluginManifestUrl(origin), fetcher);
+  return createRemotePluginConfiguration(origin, manifest);
+}
+
 export async function inspectRemotePlugin(
   definition: RemotePluginDefinition,
   fetcher: typeof fetch = fetch,
 ): Promise<PluginPackageDescriptor> {
   let manifest: RemotePluginManifest;
   try {
-    manifest = await fetchRemoteManifest(definition, fetcher);
+    manifest = await fetchManifest(definition.manifestUrl, fetcher);
   } catch (reason) {
     definition.invalidate();
     return {

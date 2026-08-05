@@ -53,6 +53,14 @@ class WorkspaceApiClient implements PluginApiClient {
   patch<T>(path: string, body?: unknown, options: PluginApiRequestOptions = {}) {
     return this.request<T>('PATCH', path, { ...options, body });
   }
+
+  put<T>(path: string, body?: unknown, options: PluginApiRequestOptions = {}) {
+    return this.request<T>('PUT', path, { ...options, body });
+  }
+
+  delete<T>(path: string, options: PluginApiRequestOptions = {}) {
+    return this.request<T>('DELETE', path, options);
+  }
 }
 
 export const apiClient = new WorkspaceApiClient();
