@@ -21,7 +21,7 @@ describe('route catalog', () => {
   });
 
   it('accepts only internal non-login return paths while preserving query and hash', () => {
-    expect(safeReturnPath('/plugin-two?from=three#demo')).toBe('/plugin-two?from=three#demo');
+    expect(safeReturnPath('/plugin-two?from=sample#demo')).toBe('/plugin-two?from=sample#demo');
     expect(safeReturnPath('//example.com/plugin-two')).toBeNull();
     expect(safeReturnPath('/login')).toBeNull();
     expect(safeReturnPath('/login#form')).toBeNull();

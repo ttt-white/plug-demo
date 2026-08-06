@@ -41,7 +41,7 @@
     "react": "^19.0.0",
     "react-router-dom": "^7.0.0"
   },
-  "fmsPlugin": {
+  "plugin": {
     "id": "two",
     "apiVersion": 1
   }

@@ -834,11 +834,11 @@ function validateDescriptorMetadata(descriptor: PluginPackageDescriptor) {
     );
   }
   if (typeof metadata.declaredPluginId !== 'string' || !metadata.declaredPluginId.trim()) {
-    diagnostics.push(createDiagnostic('PACKAGE_PLUGIN_ID_INVALID', 'discovery', 'fmsPlugin.id 必须是非空字符串', 'fmsPlugin.id'));
+    diagnostics.push(createDiagnostic('PACKAGE_PLUGIN_ID_INVALID', 'discovery', 'plugin.id 必须是非空字符串', 'plugin.id'));
   }
   if (typeof metadata.declaredApiVersion !== 'number' || !Number.isInteger(metadata.declaredApiVersion)) {
     diagnostics.push(
-      createDiagnostic('PACKAGE_API_VERSION_INVALID', 'discovery', 'fmsPlugin.apiVersion 必须是整数', 'fmsPlugin.apiVersion'),
+      createDiagnostic('PACKAGE_API_VERSION_INVALID', 'discovery', 'plugin.apiVersion 必须是整数', 'plugin.apiVersion'),
     );
   } else if (metadata.declaredApiVersion !== PLUGIN_API_VERSION) {
     diagnostics.push(
@@ -846,7 +846,7 @@ function validateDescriptorMetadata(descriptor: PluginPackageDescriptor) {
         'PACKAGE_API_VERSION_UNSUPPORTED',
         'compatibility',
         `插件包声明了不受支持的 API 版本：${metadata.declaredApiVersion}`,
-        'fmsPlugin.apiVersion',
+        'plugin.apiVersion',
       ),
     );
   }

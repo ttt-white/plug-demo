@@ -1,7 +1,7 @@
 import { createRemotePluginConfiguration, type RemotePluginConfiguration } from '@/plugins/remote-plugin-catalog';
 import { parseRemotePluginManifest } from '@tt-plug/plugin-sdk';
 import { delay, http, HttpResponse } from 'msw';
-import { installedPluginDescriptors } from 'virtual:fms-installed-plugins';
+import { installedPluginDescriptors } from 'virtual:installed-plugins';
 import {
   demoStatus,
   mockAccounts,

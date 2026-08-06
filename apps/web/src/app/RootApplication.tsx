@@ -2,25 +2,22 @@ import { AuthProvider } from '@/auth/AuthProvider';
 import { PluginRegistryProvider } from '@/plugins/PluginRegistryProvider';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
-import { StrictMode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 
 export function RootApplication() {
   return (
-    <StrictMode>
-      <BrowserRouter>
-        <ConfigProvider locale={zhCN}>
-          <AntdApp>
-            <AuthProvider>
-              <PluginRegistryProvider>
-                <App />
-              </PluginRegistryProvider>
-            </AuthProvider>
-          </AntdApp>
-        </ConfigProvider>
-      </BrowserRouter>
-    </StrictMode>
+    <BrowserRouter>
+      <ConfigProvider locale={zhCN}>
+        <AntdApp>
+          <AuthProvider>
+            <PluginRegistryProvider>
+              <App />
+            </PluginRegistryProvider>
+          </AuthProvider>
+        </AntdApp>
+      </ConfigProvider>
+    </BrowserRouter>
   );
 }
 

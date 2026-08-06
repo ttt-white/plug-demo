@@ -33,7 +33,7 @@ export function normalizeRemotePluginOrigin(value: string) {
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error(`远程插件地址必须使用 http 或 https：${url.href}`);
   url.hash = '';
   url.search = '';
-  url.pathname = url.pathname.replace(/\/fms-plugin\.json\/?$/, '').replace(/\/$/, '');
+  url.pathname = url.pathname.replace(/\/$/, '');
   return url.href.replace(/\/$/, '');
 }
 
@@ -42,11 +42,17 @@ export function createRemotePluginConfiguration(origin: string, manifest: Remote
 }
 
 export function remotePluginManifestUrl(origin: string) {
-  return `${normalizeRemotePluginOrigin(origin)}/fms-plugin.json`;
+  const normalized = normalizeRemotePluginOrigin(origin);
+  return new URL(normalized).pathname.endsWith('.json') ? normalized : `${normalized}/plugin.json`;
+}
+
+export function remotePluginBaseUrl(origin: string) {
+  const normalized = normalizeRemotePluginOrigin(origin);
+  return new URL(normalized).pathname.endsWith('.json') ? new URL('.', normalized).href.replace(/\/$/, '') : normalized;
 }
 
 function remoteEntryUrl(configuration: RemotePluginConfiguration) {
-  const entry = new URL(configuration.manifest.remote.entry, `${configuration.origin}/`);
+  const entry = new URL(configuration.manifest.remote.entry, `${remotePluginBaseUrl(configuration.origin)}/`);
   if (!['http:', 'https:'].includes(entry.protocol)) {
     throw new Error(`远程插件入口必须使用 http 或 https：${entry.href}`);
   }
@@ -71,7 +77,7 @@ export function createRemotePluginDefinition(configuration: RemotePluginConfigur
   function load() {
     if (loadPromise) return loadPromise;
     const entry = new URL(entryUrl);
-    entry.searchParams.set('fms-revision', String(revision));
+    entry.searchParams.set('revision', String(revision));
     const force = revision > 0 || registeredRemoteNames.has(manifest.remote.name);
     registerRemotes(
       [
@@ -113,4 +119,4 @@ export function createRemotePluginDefinition(configuration: RemotePluginConfigur
   };
 }
 
-export const remotePluginHealthInterval = parseHealthInterval(import.meta.env['VITE_FMS_PLUGIN_HEALTH_INTERVAL_MS']);
+export const remotePluginHealthInterval = parseHealthInterval(import.meta.env['VITE_PLUGIN_HEALTH_INTERVAL_MS']);

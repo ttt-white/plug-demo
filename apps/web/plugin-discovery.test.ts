@@ -2,12 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { discoverFmsPlugins, renderInstalledPluginsModule } from './fms-plugin-discovery';
+import { discoverPlugins, renderInstalledPluginsModule } from './plugin-discovery';
 
 const temporaryRoots: string[] = [];
 
 function createWebRoot() {
-  const root = mkdtempSync(join(tmpdir(), 'fms-discovery-'));
+  const root = mkdtempSync(join(tmpdir(), 'plugin-discovery-'));
   temporaryRoots.push(root);
   return root;
 }
@@ -25,7 +25,7 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-describe('discoverFmsPlugins', () => {
+describe('discoverPlugins', () => {
   it('discovers every marked plugin without hiding incompatible metadata', () => {
     const webRoot = createWebRoot();
     writeJson(join(webRoot, 'package.json'), {
@@ -40,20 +40,20 @@ describe('discoverFmsPlugins', () => {
     writeDependency(webRoot, '@tt-plug/plugin-ready', {
       name: '@tt-plug/plugin-ready',
       version: '1.0.0',
-      fmsPlugin: { id: 'ready', apiVersion: 1, style: './styles.css' },
+      plugin: { id: 'ready', apiVersion: 1, style: './styles.css' },
     });
     writeDependency(webRoot, '@tt-plug/plugin-future', {
       name: '@tt-plug/plugin-future',
       version: '2.0.0',
-      fmsPlugin: { id: 'future', apiVersion: 2 },
+      plugin: { id: 'future', apiVersion: 2 },
     });
     writeDependency(webRoot, '@tt-plug/plugin-malformed', {
       name: '@tt-plug/plugin-malformed',
       version: '1.0.0',
-      fmsPlugin: true,
+      plugin: true,
     });
 
-    const plugins = discoverFmsPlugins(webRoot);
+    const plugins = discoverPlugins(webRoot);
     expect(plugins.map((plugin) => plugin.packageName)).toEqual([
       '@tt-plug/plugin-future',
       '@tt-plug/plugin-malformed',

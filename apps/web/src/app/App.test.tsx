@@ -36,15 +36,15 @@ function renderApp(path = '/login') {
 
 const setupUser = () => userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
 
-const threeConfiguration = {
+const sampleConfiguration = {
   origin: 'http://localhost:3100',
   manifest: {
     schemaVersion: REMOTE_PLUGIN_MANIFEST_VERSION,
-    id: 'three',
-    name: 'three',
+    id: 'sample',
+    name: 'sample',
     version: '1.0.0',
     apiVersion: PLUGIN_API_VERSION,
-    remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+    remote: { name: 'plugin_sample', entry: '/remoteEntry.js', module: './plugin' },
   },
 } as const satisfies RemotePluginConfiguration;
 
@@ -61,8 +61,8 @@ async function expectNoAxeViolations(container: HTMLElement) {
 
 describe('workspace flows', () => {
   beforeEach(() => {
-    writeRemotePluginConfigurations([threeConfiguration]);
-    server.use(http.get('http://localhost:3100/fms-plugin.json', () => HttpResponse.json(threeConfiguration.manifest)));
+    writeRemotePluginConfigurations([sampleConfiguration]);
+    server.use(http.get('http://localhost:3100/plugin.json', () => HttpResponse.json(sampleConfiguration.manifest)));
   });
 
   it('starts without an implicitly configured remote plugin', async () => {
@@ -73,8 +73,8 @@ describe('workspace flows', () => {
     expect(await screen.findByRole('heading', { name: '插件中心' })).toBeInTheDocument();
     expect(screen.getByText('@tt-plug/plugin-one')).toBeInTheDocument();
     expect(screen.getByText('@tt-plug/plugin-two')).toBeInTheDocument();
-    expect(screen.queryByText('remote:three')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '外部插件 three' })).not.toBeInTheDocument();
+    expect(screen.queryByText('remote:sample')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '外部插件 sample' })).not.toBeInTheDocument();
   });
 
   it('keeps the login and authenticated shell accessible', async () => {
@@ -110,41 +110,41 @@ describe('workspace flows', () => {
     const user = await loginAsAdmin();
 
     expect(await screen.findByRole('heading', { name: '页面插件 two' }, { timeout: 3000 })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'three 注入的扩展模块' }, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'sample 注入的扩展模块' }, { timeout: 3000 })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '发送给 two' }));
-    expect(screen.getByText('定向消息：来自 three 扩展模块')).toBeInTheDocument();
+    expect(screen.getByText('定向消息：来自 sample 扩展模块')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '公共广播' }));
-    expect(screen.getByText('公共消息：three: three 模块广播')).toBeInTheDocument();
+    expect(screen.getByText('公共消息：sample: sample 模块广播')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '打开外部插件 three' }));
-    expect(await screen.findByRole('heading', { name: '外部插件 three' }, { timeout: 3000 })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '打开外部插件 sample' }));
+    expect(await screen.findByRole('heading', { name: '外部插件 sample' }, { timeout: 3000 })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '携带参数打开 two' }));
-    expect(await screen.findByText('路由参数：three: 来自 three 的路由参数', {}, { timeout: 3000 })).toBeInTheDocument();
-    expect(screen.getByTestId('current-path')).toHaveTextContent('/plugin-two?from=three&message=');
+    expect(await screen.findByText('路由参数：sample: 来自 sample 的路由参数', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByTestId('current-path')).toHaveTextContent('/plugin-two?from=sample&message=');
   });
 
   it('loads the external plugin page from a healthy remote', async () => {
-    renderApp('/plugin-three');
+    renderApp('/plugin-sample');
     await loginAsAdmin();
-    expect(await screen.findByRole('heading', { name: '外部插件 three' }, { timeout: 3000 })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '外部插件 three' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '外部插件 sample' }, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '外部插件 sample' })).toBeInTheDocument();
   });
 
   it('marks an unavailable remote offline and removes its route and extension module', async () => {
-    server.use(http.get('http://localhost:3100/fms-plugin.json', () => HttpResponse.error()));
+    server.use(http.get('http://localhost:3100/plugin.json', () => HttpResponse.error()));
     renderApp('/plugin-two');
     const user = await loginAsAdmin();
 
     expect(await screen.findByRole('heading', { name: '页面插件 two' }, { timeout: 3000 })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'three 注入的扩展模块' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '外部插件 three' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'sample 注入的扩展模块' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '外部插件 sample' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: '插件中心' }));
     expect(await screen.findByText('离线')).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: '停用three' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: '停用sample' })).toBeDisabled();
   });
 
   it('removes a remote plugin and restores it by importing its service address', async () => {
@@ -152,18 +152,18 @@ describe('workspace flows', () => {
     const user = await loginAsAdmin();
     expect(await screen.findByText('http://localhost:3100')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '删除three' }));
+    await user.click(screen.getByRole('button', { name: '删除sample' }));
     await user.click(await screen.findByRole('button', { name: /^删\s*除$/ }));
-    await waitFor(() => expect(screen.queryByText('remote:three')).not.toBeInTheDocument());
-    expect(screen.queryByRole('link', { name: '外部插件 three' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('remote:sample')).not.toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: '外部插件 sample' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '导入' }));
     const dialog = screen.getByRole('dialog', { name: '导入远程插件' });
     await user.type(within(dialog).getByRole('textbox', { name: '服务地址' }), 'http://localhost:3100');
     await user.click(within(dialog).getByRole('button', { name: /^导\s*入$/ }));
 
-    expect(await screen.findByText('remote:three')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '外部插件 three' })).toBeInTheDocument();
+    expect(await screen.findByText('remote:sample')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '外部插件 sample' })).toBeInTheDocument();
   });
 
   it('disables a plugin and removes its route entry', async () => {

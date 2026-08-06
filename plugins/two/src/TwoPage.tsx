@@ -60,7 +60,7 @@ export default function TwoPage({ runtime }: PluginComponentProps) {
 
       {runtime.extensions.renderSlot(
         twoContract.slots.demo,
-        <Typography.Text type="secondary">three 扩展模块当前未启用</Typography.Text>,
+        <Typography.Text type="secondary">暂无插件向此插槽注入模块</Typography.Text>,
       )}
     </section>
   );

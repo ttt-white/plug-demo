@@ -54,9 +54,9 @@ describe('remote plugin mock API', () => {
       status: 403,
     });
     await expect(
-      apiClient.put('/api/remote-plugins/three', configuration('three', 'plugin_three', 'http://127.0.0.1:3100')),
+      apiClient.put('/api/remote-plugins/sample', configuration('sample', 'plugin_sample', 'http://127.0.0.1:3100')),
     ).rejects.toMatchObject({ status: 403 });
-    await expect(apiClient.delete('/api/remote-plugins/three')).rejects.toMatchObject({ status: 403 });
+    await expect(apiClient.delete('/api/remote-plugins/sample')).rejects.toMatchObject({ status: 403 });
   });
 
   it('clears a removed plugin state before the same id is imported again', async () => {

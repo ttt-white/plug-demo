@@ -35,13 +35,13 @@ describe('remote plugin manifest', () => {
     expect(
       parseRemotePluginManifest({
         schemaVersion: REMOTE_PLUGIN_MANIFEST_VERSION,
-        id: 'three',
-        name: 'three',
+        id: 'sample',
+        name: 'sample',
         version: '1.0.0',
         apiVersion: PLUGIN_API_VERSION,
-        remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+        remote: { name: 'plugin_sample', entry: '/remoteEntry.js', module: './plugin' },
       }),
-    ).toMatchObject({ id: 'three', remote: { name: 'plugin_three' } });
+    ).toMatchObject({ id: 'sample', remote: { name: 'plugin_sample' } });
   });
 
   it('rejects malformed or incompatible remote manifests', () => {
@@ -49,10 +49,10 @@ describe('remote plugin manifest', () => {
       parseRemotePluginManifest({
         schemaVersion: 2,
         id: '',
-        name: 'three',
+        name: 'sample',
         version: '1.0.0',
         apiVersion: PLUGIN_API_VERSION,
-        remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+        remote: { name: 'plugin_sample', entry: '/remoteEntry.js', module: './plugin' },
       }),
     ).toThrow();
   });
@@ -64,19 +64,21 @@ describe('catalogPluginContributions', () => {
     const two = createPlugin('two');
     two.routes = [{ id: 'two', path: '/plugin-two', permission: 'two:view', menu: { label: 'Two', order: 20 }, load }];
     two.extensionSlots = [{ id: 'two.demo', routeId: 'two', description: 'Two demo slot' }];
-    const three = createPlugin('three');
-    three.routes = [{ id: 'three', path: '/plugin-three', permission: 'three:view', menu: { label: 'Three', order: 30 }, load }];
-    three.routeLinks = [
+    const sample = createPlugin('sample');
+    sample.routes = [
+      { id: 'sample', path: '/plugin-sample', permission: 'sample:view', menu: { label: 'Sample', order: 30 }, load },
+    ];
+    sample.routeLinks = [
       {
-        id: 'two.three',
+        id: 'two.sample',
         parentRoute: { pluginId: 'two', routeId: 'two' },
-        targetRoute: { pluginId: 'three', routeId: 'three' },
-        menu: { label: 'Open three', order: 10 },
+        targetRoute: { pluginId: 'sample', routeId: 'sample' },
+        menu: { label: 'Open sample', order: 10 },
       },
     ];
-    three.modules = [{ id: 'three.two-demo', targetPluginId: 'two', routeId: 'two', slotId: 'two.demo', priority: 20, load }];
+    sample.modules = [{ id: 'sample.two-demo', targetPluginId: 'two', routeId: 'two', slotId: 'two.demo', priority: 20, load }];
 
-    const catalog = catalogPluginContributions([one, two, three], {
+    const catalog = catalogPluginContributions([one, two, sample], {
       id: 'host',
       name: 'Host',
       routes: [{ id: 'dashboard', path: '/dashboard', label: 'Dashboard' }],
@@ -90,9 +92,9 @@ describe('catalogPluginContributions', () => {
       ]),
     );
     expect(catalog.routeLinks[0]).toMatchObject({
-      provider: { id: 'three' },
+      provider: { id: 'sample' },
       parent: { owner: { id: 'two' }, routeId: 'two', path: '/plugin-two' },
-      target: { owner: { id: 'three' }, routeId: 'three', path: '/plugin-three' },
+      target: { owner: { id: 'sample' }, routeId: 'sample', path: '/plugin-sample' },
     });
     expect(catalog.modules).toEqual(
       expect.arrayContaining([
@@ -105,7 +107,7 @@ describe('catalogPluginContributions', () => {
           }),
         }),
         expect.objectContaining({
-          id: 'three.two-demo',
+          id: 'sample.two-demo',
           target: expect.objectContaining({
             owner: expect.objectContaining({ id: 'two' }),
             routeId: 'two',
@@ -158,35 +160,35 @@ describe('validatePlugins', () => {
     two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
     two.extensionSlots = [{ id: 'two.demo', routeId: 'two' }];
 
-    const three = createPlugin('three');
-    three.modules = [
+    const sample = createPlugin('sample');
+    sample.modules = [
       {
-        id: 'three.demo',
+        id: 'sample.demo',
         targetPluginId: 'two',
         routeId: 'two',
         slotId: 'two.demo',
         load,
       },
     ];
-    three.routes = [
+    sample.routes = [
       {
-        id: 'three',
-        path: '/plugin-three',
-        permission: 'demo:three:view',
-        menu: { label: 'three', order: 1 },
+        id: 'sample',
+        path: '/plugin-sample',
+        permission: 'demo:sample:view',
+        menu: { label: 'sample', order: 1 },
         load,
       },
     ];
-    three.routeLinks = [
+    sample.routeLinks = [
       {
-        id: 'two.three',
+        id: 'two.sample',
         parentRoute: { pluginId: 'two', routeId: 'two' },
-        targetRoute: { pluginId: 'three', routeId: 'three' },
-        menu: { label: 'three', order: 1 },
+        targetRoute: { pluginId: 'sample', routeId: 'sample' },
+        menu: { label: 'sample', order: 1 },
       },
     ];
 
-    expect(validatePlugins([two, three], options).every((registration) => registration.status === 'ready')).toBe(true);
+    expect(validatePlugins([two, sample], options).every((registration) => registration.status === 'ready')).toBe(true);
   });
 
   it('rejects unknown plugin slots and route-link references', () => {
@@ -194,39 +196,39 @@ describe('validatePlugins', () => {
     two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
     two.extensionSlots = [{ id: 'two.demo', routeId: 'two' }];
 
-    const three = createPlugin('three');
-    three.modules = [
+    const sample = createPlugin('sample');
+    sample.modules = [
       {
-        id: 'three.demo',
+        id: 'sample.demo',
         targetPluginId: 'two',
         routeId: 'two',
         slotId: 'two.unknown',
         load,
       },
     ];
-    three.routes = [
+    sample.routes = [
       {
-        id: 'three',
-        path: '/plugin-three',
-        permission: 'demo:three:view',
-        menu: { label: 'three', order: 1 },
+        id: 'sample',
+        path: '/plugin-sample',
+        permission: 'demo:sample:view',
+        menu: { label: 'sample', order: 1 },
         load,
       },
     ];
-    three.routeLinks = [
+    sample.routeLinks = [
       {
-        id: 'two.three',
+        id: 'two.sample',
         parentRoute: { pluginId: 'missing-two', routeId: 'two' },
-        targetRoute: { pluginId: 'three', routeId: 'missing-route' },
-        menu: { label: 'three', order: 1 },
+        targetRoute: { pluginId: 'sample', routeId: 'missing-route' },
+        menu: { label: 'sample', order: 1 },
       },
     ];
 
-    const result = validatePlugins([two, three], options)[1];
+    const result = validatePlugins([two, sample], options)[1];
     expect(result?.status).toBe('error');
     expect(result?.errors).toEqual([
       '父路由不存在或不唯一：missing-two/two',
-      '跳转路由不存在或不唯一：three/missing-route',
+      '跳转路由不存在或不唯一：sample/missing-route',
       '目标插件未开放插槽：two/two/two.unknown',
     ]);
   });
@@ -234,26 +236,26 @@ describe('validatePlugins', () => {
   it('rejects duplicate route-link ids', () => {
     const two = createPlugin('two');
     two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
-    const three = createPlugin('three');
-    three.routes = [
+    const sample = createPlugin('sample');
+    sample.routes = [
       {
-        id: 'three',
-        path: '/plugin-three',
-        permission: 'demo:three:view',
-        menu: { label: 'three', order: 2 },
+        id: 'sample',
+        path: '/plugin-sample',
+        permission: 'demo:sample:view',
+        menu: { label: 'sample', order: 2 },
         load,
       },
     ];
     const routeLink = {
-      id: 'two.three',
+      id: 'two.sample',
       parentRoute: { pluginId: 'two', routeId: 'two' },
-      targetRoute: { pluginId: 'three', routeId: 'three' },
-      menu: { label: 'three', order: 1 },
+      targetRoute: { pluginId: 'sample', routeId: 'sample' },
+      menu: { label: 'sample', order: 1 },
     };
     two.routeLinks = [routeLink];
-    three.routeLinks = [routeLink];
+    sample.routeLinks = [routeLink];
 
-    expect(validatePlugins([two, three], options).every((registration) => registration.status === 'error')).toBe(true);
+    expect(validatePlugins([two, sample], options).every((registration) => registration.status === 'error')).toBe(true);
   });
 
   it('returns schema diagnostics instead of throwing for arbitrary runtime values', () => {
@@ -421,12 +423,12 @@ describe('createPluginChannelBus', () => {
     const unsubscribe = bus.forPlugin('two').subscribe(messageChannel, twoListener);
     bus.forPlugin('other-plugin').subscribe('two:message', otherListener);
 
-    bus.forPlugin('three').publish(messageChannel, { message: 'hello' });
-    expect(twoListener).toHaveBeenCalledWith({ message: 'hello' }, { fromPluginId: 'three' });
+    bus.forPlugin('sample').publish(messageChannel, { message: 'hello' });
+    expect(twoListener).toHaveBeenCalledWith({ message: 'hello' }, { fromPluginId: 'sample' });
     expect(otherListener).not.toHaveBeenCalled();
 
     unsubscribe();
-    bus.forPlugin('three').publish(messageChannel, { message: 'again' });
+    bus.forPlugin('sample').publish(messageChannel, { message: 'again' });
     expect(twoListener).toHaveBeenCalledOnce();
   });
 
@@ -439,7 +441,7 @@ describe('createPluginChannelBus', () => {
     });
     bus.forPlugin('two').subscribe('refresh', healthyListener);
 
-    expect(() => bus.forPlugin('three').publish('two', 'refresh', undefined)).not.toThrow();
+    expect(() => bus.forPlugin('sample').publish('two', 'refresh', undefined)).not.toThrow();
     expect(healthyListener).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
     error.mockRestore();
@@ -455,10 +457,10 @@ describe('createPluginChannelBus', () => {
     });
     bus.forPlugin('two').subscribe('refresh', healthyListener);
 
-    bus.forPlugin('three').publish('two', 'refresh', undefined);
+    bus.forPlugin('sample').publish('two', 'refresh', undefined);
     expect(healthyListener).toHaveBeenCalledOnce();
     await vi.waitFor(() => expect(error).toHaveBeenCalledOnce());
-    expect(error).toHaveBeenCalledWith('插件定向通道处理失败：three -> two/refresh', expect.any(Error));
+    expect(error).toHaveBeenCalledWith('插件定向通道处理失败：sample -> two/refresh', expect.any(Error));
     error.mockRestore();
   });
 
@@ -472,9 +474,9 @@ describe('createPluginChannelBus', () => {
     const unsubscribeOne = bus.forPlugin('one').subscribePublic(publicMessage, oneListener);
     bus.forPlugin('two').subscribePublic(publicMessage, twoListener);
 
-    bus.forPlugin('three').publishPublic(publicMessage, { message: 'three 广播' });
-    expect(oneListener).toHaveBeenCalledWith({ message: 'three 广播' }, { fromPluginId: 'three' });
-    expect(twoListener).toHaveBeenCalledWith({ message: 'three 广播' }, { fromPluginId: 'three' });
+    bus.forPlugin('sample').publishPublic(publicMessage, { message: 'sample 广播' });
+    expect(oneListener).toHaveBeenCalledWith({ message: 'sample 广播' }, { fromPluginId: 'sample' });
+    expect(twoListener).toHaveBeenCalledWith({ message: 'sample 广播' }, { fromPluginId: 'sample' });
 
     unsubscribeOne();
     bus.forPlugin('two').publishPublic(publicMessage, { message: 'two 广播' });
@@ -492,7 +494,7 @@ describe('createPluginChannelBus', () => {
     });
     bus.forPlugin('two').subscribePublic(publicMessage, healthyListener);
 
-    expect(() => bus.forPlugin('three').publishPublic(publicMessage, undefined)).not.toThrow();
+    expect(() => bus.forPlugin('sample').publishPublic(publicMessage, undefined)).not.toThrow();
     expect(healthyListener).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
     error.mockRestore();

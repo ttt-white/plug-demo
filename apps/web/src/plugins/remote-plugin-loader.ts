@@ -10,6 +10,7 @@ import type { RemotePluginDefinition } from './remote-plugin-catalog';
 import {
   createRemotePluginConfiguration,
   normalizeRemotePluginOrigin,
+  remotePluginBaseUrl,
   remotePluginManifestUrl,
   type RemotePluginConfiguration,
 } from './remote-plugin-catalog';
@@ -67,7 +68,7 @@ function validateRemoteIdentity(definition: RemotePluginDefinition, manifest: Re
       ),
     );
   }
-  const entryUrl = new URL(manifest.remote.entry, `${definition.origin}/`).href;
+  const entryUrl = new URL(manifest.remote.entry, `${remotePluginBaseUrl(definition.origin)}/`).href;
   if (entryUrl !== definition.entryUrl) {
     diagnostics.push(
       diagnostic(
@@ -97,12 +98,16 @@ async function fetchManifest(url: string, fetcher: typeof fetch) {
   }
 }
 
+function fetchManifestFromService(origin: string, fetcher: typeof fetch) {
+  return fetchManifest(remotePluginManifestUrl(origin), fetcher);
+}
+
 export async function discoverRemotePluginConfiguration(
   serviceAddress: string,
   fetcher: typeof fetch = fetch,
 ): Promise<RemotePluginConfiguration> {
   const origin = normalizeRemotePluginOrigin(serviceAddress);
-  const manifest = await fetchManifest(remotePluginManifestUrl(origin), fetcher);
+  const manifest = await fetchManifestFromService(origin, fetcher);
   return createRemotePluginConfiguration(origin, manifest);
 }
 
@@ -112,7 +117,7 @@ export async function inspectRemotePlugin(
 ): Promise<PluginPackageDescriptor> {
   let manifest: RemotePluginManifest;
   try {
-    manifest = await fetchManifest(definition.manifestUrl, fetcher);
+    manifest = await fetchManifestFromService(definition.origin, fetcher);
   } catch (reason) {
     definition.invalidate();
     return {

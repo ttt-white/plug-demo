@@ -13,8 +13,10 @@ Keep the contracts and SDK versions compatible with the host application.
 ## Usage
 
 ```ts
-import { threeContract, workspaceContract } from '@tt-plug/plugin-contracts';
+import { twoContract, workspaceContract } from '@tt-plug/plugin-contracts';
 
-const pluginRoute = threeContract.routes.page;
+const pluginRoute = twoContract.routes.page;
 const publicChannel = workspaceContract.channels.publicMessage;
 ```
+
+The package only ships contracts for plugins that live under the host repository's `plugins/` directory; the export barrel is generated from that directory. A plugin developed in its own repository declares its contract locally instead — see `plugin-development.md` in the host repository.

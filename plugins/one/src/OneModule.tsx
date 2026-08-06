@@ -1,4 +1,4 @@
-import { fmsDataContract, workspaceContract } from '@tt-plug/plugin-contracts';
+import { dataContract, workspaceContract } from '@tt-plug/plugin-contracts';
 import { usePluginQuery, type PluginComponentProps } from '@tt-plug/plugin-sdk';
 import { Button, Typography } from 'antd';
 import { Radio } from 'lucide-react';
@@ -7,9 +7,9 @@ import { useEffect, useState } from 'react';
 export default function OneModule({ runtime }: PluginComponentProps) {
   const [publicMessage, setPublicMessage] = useState('尚未收到公共消息');
   const statusQuery = usePluginQuery(runtime.query, {
-    queryKey: fmsDataContract.status.queryKey,
-    schema: fmsDataContract.status.schema,
-    queryFn: ({ signal }) => runtime.api.get<unknown>(fmsDataContract.status.path, { signal }),
+    queryKey: dataContract.status.queryKey,
+    schema: dataContract.status.schema,
+    queryFn: ({ signal }) => runtime.api.get<unknown>(dataContract.status.path, { signal }),
   });
 
   useEffect(

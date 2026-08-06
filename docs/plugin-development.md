@@ -29,14 +29,14 @@
     "@tt-plug/plugin-sdk": "^1.0.0",
     "react": "^19.0.0"
   },
-  "fmsPlugin": {
+  "plugin": {
     "id": "demo",
     "apiVersion": 1
   }
 }
 ```
 
-`fmsPlugin` 是宿主的本地插件发现元数据，可选的 `style` 字段用于声明样式入口。
+`plugin` 是宿主的本地插件发现元数据，可选的 `style` 字段用于声明样式入口。
 
 ```ts
 import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
@@ -61,6 +61,22 @@ export const plugin: WorkspacePlugin = {
 ```
 
 入口必须导出名为 `plugin` 的对象。插件 ID、路由 ID、路径和模块 ID 在工作区内必须唯一。
+
+## 契约放在哪里
+
+`@tt-plug/plugin-contracts` **只收录基座仓库 `plugins/` 目录下的插件**。它的入口是一个纯 barrel，不含任何具体插件名，导出清单由 `scripts/generate-plugin-contracts.mjs` 扫描 `plugins/*/package.json` 的 `plugin.id` 生成。
+
+```text
+packages/plugin-contracts/src/
+  index.ts            纯 barrel
+  workspace.ts        宿主与工作区级契约（非插件专属）
+  plugins/index.ts    生成产物，勿手改
+  plugins/<id>.ts     单个本地插件的契约
+```
+
+新增本地插件：建 `src/plugins/<id>.ts` → 跑 `pnpm generate:contracts`。漏建文件时生成器会直接报错。
+
+独立仓库的第三方插件**不进这个包**，在自己的 `src/contract.ts` 里声明本地契约，只从包里取跨插件协作真正需要的部分（例如注入 `two` 插槽时取 `twoContract`）。
 
 ## Runtime
 
@@ -89,9 +105,9 @@ export default function DemoPage({ runtime }: PluginComponentProps) {
 
 ```tsx
 const status = usePluginQuery(runtime.query, {
-  queryKey: fmsDataContract.status.queryKey,
-  schema: fmsDataContract.status.schema,
-  queryFn: ({ signal }) => runtime.api.get(fmsDataContract.status.path, { signal }),
+  queryKey: dataContract.status.queryKey,
+  schema: dataContract.status.schema,
+  queryFn: ({ signal }) => runtime.api.get(dataContract.status.path, { signal }),
 });
 ```
 
@@ -125,7 +141,7 @@ modules: [
 ];
 ```
 
-插件间插槽需要目标插件声明 `extensionSlots`，贡献方的 module 同时声明 `targetPluginId`。当前 two/three 是完整示例。
+插件间插槽需要目标插件声明 `extensionSlots`，贡献方的 module 同时声明 `targetPluginId`。当前 two 开放插槽、five 注入模块，是完整示例。
 
 ## 贡献关系
 
@@ -175,7 +191,7 @@ runtime.extensions.navigateTo(twoContract.routes.page, {
 远程服务需要在同一服务基地址下公开 manifest 和 Federation 入口。例如服务基地址为 `https://plugins.example.com/catalog/demo` 时，至少公开：
 
 ```text
-https://plugins.example.com/catalog/demo/fms-plugin.json  健康检查和远程身份
+https://plugins.example.com/catalog/demo/plugin.json  健康检查和远程身份
 https://plugins.example.com/catalog/demo/remoteEntry.js  Module Federation 入口
 ```
 
@@ -198,7 +214,7 @@ manifest 示例：
 
 `remote.entry` 可以是相对服务基地址的路径，也可以是完整的 HTTP(S) 地址。若插件部署在带路径前缀的位置，应使用 `./remoteEntry.js`；以 `/` 开头的入口会从远程域名根路径解析。
 
-管理员在插件中心输入服务基地址或完整的 `fms-plugin.json` 地址完成导入。插件 ID、服务地址和 Federation 容器名在工作区内必须唯一；修改地址时，新服务必须返回同一个插件 ID。宿主保存完整 manifest 快照，因此健康检查失败时仍会显示插件身份和离线诊断，但不会加载远程代码；下一次健康检查成功后自动恢复注册。
+管理员在插件中心输入服务基地址或完整的 `plugin.json` 地址完成导入。插件 ID、服务地址和 Federation 容器名在工作区内必须唯一；修改地址时，新服务必须返回同一个插件 ID。宿主保存完整 manifest 快照，因此健康检查失败时仍会显示插件身份和离线诊断，但不会加载远程代码；下一次健康检查成功后自动恢复注册。
 
 React、React DOM、Ant Design、SDK 和共享契约必须在宿主与 remote 的 Federation 配置中声明为单例共享依赖，避免出现多个运行时实例。
 
@@ -211,6 +227,6 @@ pnpm test
 pnpm build
 ```
 
-远程构建应同时包含 `fms-plugin.json`、Federation 入口和样式产物。部署在不同域名或端口时，manifest、入口脚本及其动态资源都需要返回允许宿主来源访问的 CORS 响应头。
+远程构建应同时包含 `plugin.json`、Federation 入口和样式产物。部署在不同域名或端口时，manifest、入口脚本及其动态资源都需要返回允许宿主来源访问的 CORS 响应头。
 
 共享 SDK 或 contracts 变更后，发布新的 npm 版本；外部插件通过正常的 semver 依赖升级，不与主体目录建立文件同步关系。

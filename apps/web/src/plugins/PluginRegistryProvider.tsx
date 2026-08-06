@@ -24,7 +24,7 @@ import {
 } from '@tt-plug/plugin-sdk';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { installedPluginDescriptors } from 'virtual:fms-installed-plugins';
+import { installedPluginDescriptors } from 'virtual:installed-plugins';
 
 export interface ResolvedRoute {
   plugin: WorkspacePlugin;

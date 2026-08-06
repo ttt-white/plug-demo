@@ -3,15 +3,15 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
-import { fmsPluginDiscovery } from './fms-plugin-discovery';
+import { pluginDiscovery } from './plugin-discovery';
 
 export default defineConfig(({ command }) => {
   return {
     plugins: [
       react(),
-      fmsPluginDiscovery(fileURLToPath(new URL('.', import.meta.url))),
+      pluginDiscovery(fileURLToPath(new URL('.', import.meta.url))),
       federation({
-        name: 'fms_host',
+        name: 'host',
         shared: {
           react: { singleton: true, requiredVersion: '^19.0.0' },
           'react-dom': { singleton: true, requiredVersion: '^19.0.0' },

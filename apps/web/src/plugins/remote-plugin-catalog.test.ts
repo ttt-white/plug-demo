@@ -5,22 +5,23 @@ import {
   createRemotePluginConfiguration,
   createRemotePluginDefinition,
   normalizeRemotePluginOrigin,
+  remotePluginManifestUrl,
 } from './remote-plugin-catalog';
 
-const threeManifest = {
+const sampleManifest = {
   schemaVersion: REMOTE_PLUGIN_MANIFEST_VERSION,
-  id: 'three',
-  name: 'three',
+  id: 'sample',
+  name: 'sample',
   version: '1.0.0',
   apiVersion: PLUGIN_API_VERSION,
-  remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+  remote: { name: 'plugin_sample', entry: '/remoteEntry.js', module: './plugin' },
 } as const satisfies RemotePluginManifest;
 
 describe('remote plugin federation loading', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('reuses a healthy module and forces a new entry after invalidation', async () => {
-    const definition = createRemotePluginDefinition(createRemotePluginConfiguration('http://localhost:3100', threeManifest));
+    const definition = createRemotePluginDefinition(createRemotePluginConfiguration('http://localhost:3100', sampleManifest));
 
     const first = await definition.load();
     const cached = await definition.load();
@@ -94,10 +95,28 @@ describe('remote plugin federation loading', () => {
   });
 
   it('normalizes a service root or manifest URL while preserving a path prefix', () => {
-    expect(normalizeRemotePluginOrigin('https://example.test/plugins/three/')).toBe('https://example.test/plugins/three');
-    expect(normalizeRemotePluginOrigin('https://example.test/plugins/three/fms-plugin.json')).toBe(
-      'https://example.test/plugins/three',
+    expect(normalizeRemotePluginOrigin('https://example.test/plugins/sample/')).toBe('https://example.test/plugins/sample');
+    expect(normalizeRemotePluginOrigin('https://example.test/plugins/five/plugin.json')).toBe(
+      'https://example.test/plugins/five/plugin.json',
     );
+    expect(remotePluginManifestUrl('https://example.test/plugins/five/plugin.json')).toBe(
+      'https://example.test/plugins/five/plugin.json',
+    );
+    expect(remotePluginManifestUrl('https://example.test/plugins/five')).toBe('https://example.test/plugins/five/plugin.json');
+  });
+
+  it('resolves a relative remote entry beside a custom manifest URL', () => {
+    const definition = createRemotePluginDefinition(
+      createRemotePluginConfiguration('https://example.test/plugins/five/plugin.json', {
+        ...sampleManifest,
+        id: 'five',
+        name: 'five',
+        remote: { name: 'plugin_five', entry: './remoteEntry.js', module: './plugin' },
+      }),
+    );
+
+    expect(definition.manifestUrl).toBe('https://example.test/plugins/five/plugin.json');
+    expect(definition.entryUrl).toBe('https://example.test/plugins/five/remoteEntry.js');
   });
 
   it('rejects an empty, malformed or non-http service address', () => {

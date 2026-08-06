@@ -39,7 +39,7 @@
     "antd": "^6.0.0",
     "react": "^19.0.0"
   },
-  "fmsPlugin": {
+  "plugin": {
     "id": "one",
     "apiVersion": 1
   }

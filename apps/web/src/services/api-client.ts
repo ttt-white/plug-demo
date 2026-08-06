@@ -1,6 +1,6 @@
 import { PluginApiError, type PluginApiClient, type PluginApiRequestOptions } from '@tt-plug/plugin-sdk';
 
-export const TOKEN_STORAGE_KEY = 'fms.access-token';
+export const TOKEN_STORAGE_KEY = 'plugin-system.access-token';
 
 type UnauthorizedHandler = () => void;
 let unauthorizedHandler: UnauthorizedHandler | undefined;

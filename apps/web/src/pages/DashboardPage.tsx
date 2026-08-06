@@ -1,7 +1,7 @@
 import { usePluginRegistry } from '@/plugins/PluginRegistryProvider';
 import { PluginSlot } from '@/plugins/PluginRenderer';
 import { apiClient } from '@/services/api-client';
-import { fmsDataContract, hostContract } from '@tt-plug/plugin-contracts';
+import { dataContract, hostContract } from '@tt-plug/plugin-contracts';
 import { usePluginQuery } from '@tt-plug/plugin-sdk';
 import { Button, Typography } from 'antd';
 import { RefreshCw } from 'lucide-react';
@@ -9,9 +9,9 @@ import { RefreshCw } from 'lucide-react';
 export function DashboardPage() {
   const { query } = usePluginRegistry();
   const statusQuery = usePluginQuery(query, {
-    queryKey: fmsDataContract.status.queryKey,
-    schema: fmsDataContract.status.schema,
-    queryFn: ({ signal }) => apiClient.get<unknown>(fmsDataContract.status.path, { signal }),
+    queryKey: dataContract.status.queryKey,
+    schema: dataContract.status.schema,
+    queryFn: ({ signal }) => apiClient.get<unknown>(dataContract.status.path, { signal }),
   });
 
   return (

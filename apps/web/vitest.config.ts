@@ -1,10 +1,10 @@
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import { fmsPluginDiscovery } from './fms-plugin-discovery';
+import { pluginDiscovery } from './plugin-discovery';
 
 export default defineConfig({
-  plugins: [react(), fmsPluginDiscovery(fileURLToPath(new URL('.', import.meta.url)))],
+  plugins: [react(), pluginDiscovery(fileURLToPath(new URL('.', import.meta.url)))],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

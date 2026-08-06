@@ -1,10 +1,11 @@
 {
-  "name": "fms-workspace",
+  "name": "plugin-system",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @tt-plug/web dev",
+    "generate:contracts": "node scripts/generate-plugin-contracts.mjs",
     "build": "pnpm -r build && pnpm verify:production",
     "verify:production": "node scripts/assert-production-build.mjs",
     "typecheck": "pnpm -r typecheck",

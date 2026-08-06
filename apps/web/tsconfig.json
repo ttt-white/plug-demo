@@ -11,5 +11,5 @@
       "@tt-plug/plugin-two": ["../../plugins/two/src/index.ts"]
     }
   },
-  "include": ["src", "fms-plugin-discovery*.ts", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "plugin-discovery*.ts", "vite.config.ts", "vitest.config.ts"]
 }

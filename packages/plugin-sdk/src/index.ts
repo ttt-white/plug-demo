@@ -599,9 +599,9 @@ export interface PluginPackageMetadata {
   packageName: string;
   /** package.json 版本。 */
   packageVersion: string;
-  /** package.json `fmsPlugin.id` 的原始值。 */
+  /** package.json `plugin.id` 的原始值。 */
   declaredPluginId?: unknown;
-  /** package.json `fmsPlugin.apiVersion` 的原始值。 */
+  /** package.json `plugin.apiVersion` 的原始值。 */
   declaredApiVersion?: unknown;
   /** package.json 声明的插件样式入口。 */
   style?: string;

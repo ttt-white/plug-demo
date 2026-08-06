@@ -1,6 +1,6 @@
 {
   "name": "@tt-plug/plugin-contracts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": false,
   "description": "Shared host and plugin contracts for the plugin material management system.",
   "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-contracts#readme",
@@ -27,7 +27,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --clean --external @tt-plug/plugin-sdk --external zod && tsc -p tsconfig.build.json",
+    "build": "node ../../scripts/generate-plugin-contracts.mjs --check && tsup src/index.ts --format esm --clean --external @tt-plug/plugin-sdk --external zod && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

@@ -16,25 +16,25 @@ const remoteConfiguration = {
   origin: 'http://localhost:3100',
   manifest: {
     schemaVersion: 1 as const,
-    id: 'three',
-    name: 'three',
+    id: 'sample',
+    name: 'sample',
     version: '1.0.0',
     apiVersion: 1 as const,
-    remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+    remote: { name: 'plugin_sample', entry: '/remoteEntry.js', module: './plugin' },
   },
 };
 
 const remoteRegistration: PluginRegistration = {
   source: {
-    packageName: 'remote:three',
+    packageName: 'remote:sample',
     packageVersion: '1.0.0',
-    declaredPluginId: 'three',
+    declaredPluginId: 'sample',
     declaredApiVersion: 1,
     sourceType: 'remote',
     remoteUrl: 'http://localhost:3100',
   },
   plugin: {
-    manifest: { id: 'three', name: 'three', version: '1.0.0', apiVersion: 1 },
+    manifest: { id: 'sample', name: 'sample', version: '1.0.0', apiVersion: 1 },
   },
   status: 'ready',
   diagnostics: [],
@@ -44,8 +44,8 @@ const remoteRegistration: PluginRegistration = {
 function registry(overrides: Record<string, unknown> = {}) {
   return {
     registrations: [remoteRegistration],
-    states: [{ id: 'three', enabled: true }],
-    statesState: { status: 'ready', states: [{ id: 'three', enabled: true }], error: null },
+    states: [{ id: 'sample', enabled: true }],
+    statesState: { status: 'ready', states: [{ id: 'sample', enabled: true }], error: null },
     loading: false,
     refreshing: false,
     remoteConfigurations: [remoteConfiguration],
@@ -116,9 +116,9 @@ describe('PluginCenterPage diagnostics', () => {
     useAuthMock.mockReturnValue({ can: () => true });
     const registration: PluginRegistration = {
       source: {
-        packageName: 'remote:three',
+        packageName: 'remote:sample',
         packageVersion: '0.0.0',
-        declaredPluginId: 'three',
+        declaredPluginId: 'sample',
         declaredApiVersion: 1,
         sourceType: 'remote',
         remoteUrl: 'http://localhost:3100',
@@ -137,8 +137,8 @@ describe('PluginCenterPage diagnostics', () => {
     };
     usePluginRegistryMock.mockReturnValue({
       registrations: [registration],
-      states: [{ id: 'three', enabled: true }],
-      statesState: { status: 'ready', states: [{ id: 'three', enabled: true }], error: null },
+      states: [{ id: 'sample', enabled: true }],
+      statesState: { status: 'ready', states: [{ id: 'sample', enabled: true }], error: null },
       loading: false,
       refreshing: false,
       remoteConfigurations: [{ ...remoteConfiguration, manifest: { ...remoteConfiguration.manifest, name: '运输分析插件' } }],
@@ -196,14 +196,14 @@ describe('PluginCenterPage diagnostics', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: '修改three服务地址' }));
+    await user.click(screen.getByRole('button', { name: '修改sample服务地址' }));
     const dialog = screen.getByRole('dialog', { name: '修改远程插件地址' });
     const input = within(dialog).getByRole('textbox', { name: '服务地址' });
     await user.clear(input);
     await user.type(input, 'http://127.0.0.1:3100');
     await user.click(within(dialog).getByRole('button', { name: /保\s*存/ }));
 
-    await waitFor(() => expect(updateRemotePlugin).toHaveBeenCalledWith('three', 'http://127.0.0.1:3100'));
+    await waitFor(() => expect(updateRemotePlugin).toHaveBeenCalledWith('sample', 'http://127.0.0.1:3100'));
   });
 
   it('removes a configured remote plugin after confirmation', async () => {
@@ -218,10 +218,10 @@ describe('PluginCenterPage diagnostics', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: '删除three' }));
+    await user.click(screen.getByRole('button', { name: '删除sample' }));
     await user.click(await screen.findByRole('button', { name: /^删\s*除$/ }));
 
-    await waitFor(() => expect(removeRemotePlugin).toHaveBeenCalledWith('three'));
+    await waitFor(() => expect(removeRemotePlugin).toHaveBeenCalledWith('sample'));
   });
 
   it('shows page, entry, module and slot relationships with resolved targets', async () => {
@@ -257,29 +257,29 @@ describe('PluginCenterPage diagnostics', () => {
         errors: [],
       },
       {
-        source: { packageName: 'remote:three', packageVersion: '1.0.0', sourceType: 'remote' },
+        source: { packageName: 'remote:sample', packageVersion: '1.0.0', sourceType: 'remote' },
         plugin: {
-          manifest: { id: 'three', name: 'three', version: '1.0.0', apiVersion: 1 },
+          manifest: { id: 'sample', name: 'sample', version: '1.0.0', apiVersion: 1 },
           routes: [
             {
-              id: 'three',
-              path: '/plugin-three',
-              permission: 'demo:three:view',
-              menu: { label: '外部插件 three', order: 35 },
+              id: 'sample',
+              path: '/plugin-sample',
+              permission: 'demo:sample:view',
+              menu: { label: '外部插件 sample', order: 35 },
               load,
             },
           ],
           routeLinks: [
             {
-              id: 'two.three',
+              id: 'two.sample',
               parentRoute: { pluginId: 'two', routeId: 'two' },
-              targetRoute: { pluginId: 'three', routeId: 'three' },
-              menu: { label: '打开外部插件 three', order: 10 },
+              targetRoute: { pluginId: 'sample', routeId: 'sample' },
+              menu: { label: '打开外部插件 sample', order: 10 },
             },
           ],
           modules: [
             {
-              id: 'three.two-demo',
+              id: 'sample.two-demo',
               targetPluginId: 'two',
               routeId: 'two',
               slotId: 'two.demo',
@@ -310,11 +310,11 @@ describe('PluginCenterPage diagnostics', () => {
     );
 
     expect(screen.getByRole('heading', { name: '贡献关系' })).toBeInTheDocument();
-    expect(within(screen.getByRole('table')).getByText('/plugin-three')).toBeInTheDocument();
+    expect(within(screen.getByRole('table')).getByText('/plugin-sample')).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: '页面入口 (1)' }));
     expect(within(screen.getByRole('table')).getByText('two/two')).toBeInTheDocument();
-    expect(within(screen.getByRole('table')).getByText('three/three')).toBeInTheDocument();
+    expect(within(screen.getByRole('table')).getByText('sample/sample')).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: '模块 (2)' }));
     expect(within(screen.getByRole('table')).getByText('host/dashboard')).toBeInTheDocument();

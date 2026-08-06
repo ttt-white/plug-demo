@@ -38,8 +38,8 @@ export const demoStatus: DemoStatus = {
   updatedAt: '2026-08-04 10:00',
 };
 
-const PLUGIN_STATE_KEY = 'fms.mock.plugin-states';
-const REMOTE_PLUGIN_CONFIG_KEY = 'fms.mock.remote-plugin-configurations';
+const PLUGIN_STATE_KEY = 'plugin-system.mock.plugin-states';
+const REMOTE_PLUGIN_CONFIG_KEY = 'plugin-system.mock.remote-plugin-configurations';
 
 function parseRemotePluginConfiguration(value: unknown): RemotePluginConfiguration | null {
   if (typeof value !== 'object' || value === null || !('origin' in value) || !('manifest' in value)) return null;

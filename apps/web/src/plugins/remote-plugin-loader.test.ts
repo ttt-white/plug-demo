@@ -4,24 +4,24 @@ import type { RemotePluginDefinition } from './remote-plugin-catalog';
 import { discoverRemotePluginConfiguration, inspectRemotePlugin } from './remote-plugin-loader';
 
 const plugin = {
-  manifest: { id: 'three', name: 'three', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
+  manifest: { id: 'sample', name: 'sample', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
 } satisfies WorkspacePlugin;
 
 const manifest = {
   schemaVersion: 1,
-  id: 'three',
-  name: 'three',
+  id: 'sample',
+  name: 'sample',
   version: '1.0.0',
   apiVersion: PLUGIN_API_VERSION,
-  remote: { name: 'plugin_three', entry: '/remoteEntry.js', module: './plugin' },
+  remote: { name: 'plugin_sample', entry: '/remoteEntry.js', module: './plugin' },
 } as const satisfies RemotePluginManifest;
 
 const definition: RemotePluginDefinition = {
   configuration: { origin: 'http://localhost:3100', manifest },
-  id: 'three',
+  id: 'sample',
   origin: 'http://localhost:3100',
-  manifestUrl: 'http://localhost:3100/fms-plugin.json',
-  remoteName: 'plugin_three',
+  manifestUrl: 'http://localhost:3100/plugin.json',
+  remoteName: 'plugin_sample',
   entryUrl: 'http://localhost:3100/remoteEntry.js',
   exposedModule: './plugin',
   invalidate: vi.fn(),
@@ -32,12 +32,36 @@ describe('remote plugin inspection', () => {
   it('discovers a configuration from a service address with a path prefix', async () => {
     const fetcher = vi.fn(async () => Response.json(manifest));
 
-    await expect(discoverRemotePluginConfiguration('https://example.test/plugins/three/', fetcher)).resolves.toEqual({
-      origin: 'https://example.test/plugins/three',
+    await expect(discoverRemotePluginConfiguration('https://example.test/plugins/sample/', fetcher)).resolves.toEqual({
+      origin: 'https://example.test/plugins/sample',
       manifest,
     });
     expect(fetcher).toHaveBeenCalledWith(
-      'https://example.test/plugins/three/fms-plugin.json',
+      'https://example.test/plugins/sample/plugin.json',
+      expect.objectContaining({ cache: 'no-store' }),
+    );
+  });
+
+  it('only probes plugin.json and does not retry another manifest name', async () => {
+    const fetcher = vi.fn(async () => new Response(null, { status: 404 }));
+
+    await expect(discoverRemotePluginConfiguration('https://example.test/plugins/sample', fetcher)).rejects.toThrow('HTTP 404');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://example.test/plugins/sample/plugin.json',
+      expect.objectContaining({ cache: 'no-store' }),
+    );
+  });
+
+  it('discovers a configuration from a custom manifest URL', async () => {
+    const fetcher = vi.fn(async () => Response.json(manifest));
+
+    await expect(discoverRemotePluginConfiguration('https://example.test/plugins/sample/plugin.json', fetcher)).resolves.toEqual({
+      origin: 'https://example.test/plugins/sample/plugin.json',
+      manifest,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://example.test/plugins/sample/plugin.json',
       expect.objectContaining({ cache: 'no-store' }),
     );
   });
@@ -55,9 +79,9 @@ describe('remote plugin inspection', () => {
     const descriptor = await inspectRemotePlugin(definition, fetcher);
 
     expect(descriptor.metadata).toMatchObject({
-      packageName: 'remote:three',
+      packageName: 'remote:sample',
       packageVersion: '1.0.0',
-      declaredPluginId: 'three',
+      declaredPluginId: 'sample',
       sourceType: 'remote',
       remoteUrl: 'http://localhost:3100',
     });
@@ -71,7 +95,7 @@ describe('remote plugin inspection', () => {
     });
     const descriptor = await inspectRemotePlugin(definition, fetcher);
 
-    expect(descriptor.metadata).toMatchObject({ declaredPluginId: 'three', packageVersion: '1.0.0' });
+    expect(descriptor.metadata).toMatchObject({ declaredPluginId: 'sample', packageVersion: '1.0.0' });
     expect(descriptor.diagnostics).toEqual([
       expect.objectContaining({ code: 'REMOTE_PLUGIN_UNAVAILABLE', stage: 'health', severity: 'error' }),
     ]);
