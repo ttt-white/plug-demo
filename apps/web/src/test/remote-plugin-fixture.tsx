@@ -30,6 +30,13 @@ const twoTarget = {
   slotId: 'two.demo',
 } as const satisfies PluginSlotReference<'two', 'two', 'two.demo'>;
 
+// one 注入到 two 页面的模块内部再开的插槽：插槽归 one，位置在 two 的页面上。
+const oneNestedTarget = {
+  pluginId: 'one',
+  routeId: 'two',
+  slotId: 'one.nested',
+} as const satisfies PluginSlotReference<'one', 'two', 'one.nested'>;
+
 function RemotePluginPage({ runtime }: PluginComponentProps) {
   // two 的契约由基座通过 runtime 下发；two 未启用时为 undefined。
   const twoPage = runtime.contracts.two?.routes.page;
@@ -75,6 +82,17 @@ function RemotePluginModule({ runtime }: PluginComponentProps) {
   );
 }
 
+function RemotePluginNestedModule({ runtime }: PluginComponentProps) {
+  return (
+    <section aria-labelledby="remote-nested-title">
+      <Typography.Title id="remote-nested-title" level={3}>
+        sample 注入 one 的嵌套模块
+      </Typography.Title>
+      <Typography.Text type="secondary">运行身份 {runtime.pluginId}</Typography.Text>
+    </section>
+  );
+}
+
 export const remotePluginFixture: WorkspacePlugin = {
   manifest: {
     id: remotePluginContract.pluginId,
@@ -82,7 +100,10 @@ export const remotePluginFixture: WorkspacePlugin = {
     version: '1.0.0',
     apiVersion: PLUGIN_API_VERSION,
     requires: {
-      plugins: [{ id: twoTarget.pluginId, range: '^1.0.0', optional: true }],
+      plugins: [
+        { id: twoTarget.pluginId, range: '^1.0.0', optional: true },
+        { id: oneNestedTarget.pluginId, range: '^1.0.0', optional: true },
+      ],
       capabilities: [{ id: 'demo.receive-message', range: '^1.0.0', optional: true }],
     },
   },
@@ -114,6 +135,16 @@ export const remotePluginFixture: WorkspacePlugin = {
       permission: 'demo:sample:view',
       priority: 20,
       load: async () => ({ default: RemotePluginModule }),
+    },
+    // 注入到 one 开在 two 页面上的嵌套插槽：two 页面 → one 的模块 → 这里。
+    {
+      id: 'sample.one-nested',
+      targetPluginId: oneNestedTarget.pluginId,
+      routeId: oneNestedTarget.routeId,
+      slotId: oneNestedTarget.slotId,
+      permission: 'demo:sample:view',
+      priority: 5,
+      load: async () => ({ default: RemotePluginNestedModule }),
     },
   ],
 };

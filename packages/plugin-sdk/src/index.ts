@@ -720,6 +720,23 @@ export type PluginRegistration = ReadyPluginRegistration | FailedPluginRegistrat
 
 export { loadPluginRegistrations, parseRemotePluginManifest, validatePlugins } from './plugin-validation';
 
+export {
+  createPluginContributions,
+  ExtensionSlot,
+  ModuleRouter,
+  PageRouter,
+  PluginRuntimeContext,
+  useOptionalPluginRuntime,
+  usePluginRuntime,
+  type ContributionContent,
+  type ContributionMenu,
+  type CreatePluginContributionsOptions,
+  type ExtensionSlotProps,
+  type ModuleRouterProps,
+  type PageRouterProps,
+  type PluginContributions,
+} from './routing';
+
 /** 按优先级降序、模块 ID 升序返回新的模块贡献数组。 */
 export function sortModuleContributions(modules: readonly PluginModuleContribution[]): PluginModuleContribution[] {
   return [...modules].sort((left, right) => {

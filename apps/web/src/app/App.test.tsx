@@ -4,9 +4,9 @@ import { server } from '@/mocks/server';
 import { PluginRegistryProvider } from '@/plugins/PluginRegistryProvider';
 import type { RemotePluginConfiguration } from '@/plugins/remote-plugin-catalog';
 import { TOKEN_STORAGE_KEY } from '@/services/api-client';
-import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from '@tt-plug/plugin-sdk';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
+import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from '@tt-plug/plugin-sdk';
 import { ConfigProvider } from 'antd';
 import axe from 'axe-core';
 import { http, HttpResponse } from 'msw';
@@ -124,6 +124,26 @@ describe('workspace flows', () => {
     await user.click(screen.getByRole('button', { name: '携带参数打开 two' }));
     expect(await screen.findByText('路由参数：sample: 来自 sample 的路由参数', {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByTestId('current-path')).toHaveTextContent('/plugin-two?from=sample&message=');
+  });
+
+  it('nests plugin modules three levels deep across plugin boundaries', async () => {
+    renderApp('/plugin-two');
+    await loginAsAdmin();
+
+    // 第一层：two 的页面开放 two.demo，one 注入了一个模块。
+    const oneModule = await screen.findByRole('heading', { name: 'one 注入 two 的模块' }, { timeout: 3000 });
+    expect(oneModule).toBeInTheDocument();
+
+    // 第二层：one 在自己那个模块内部开放 one.nested，two 和 sample 各注入一个模块。
+    const nestedHeadings = await screen.findAllByRole('heading', { name: /注入 one 的嵌套模块$/ }, { timeout: 3000 });
+    expect(nestedHeadings.map((heading) => heading.textContent)).toEqual(
+      expect.arrayContaining(['two 注入 one 的嵌套模块', 'sample 注入 one 的嵌套模块']),
+    );
+
+    // 嵌套模块必须真的落在 one 的模块内部，而不是平铺在页面上。
+    const oneSection = oneModule.closest('section');
+    expect(oneSection).not.toBeNull();
+    for (const heading of nestedHeadings) expect(oneSection).toContainElement(heading);
   });
 
   it('loads the external plugin page from a healthy remote', async () => {

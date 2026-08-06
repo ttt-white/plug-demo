@@ -7,10 +7,10 @@ import type {
   PluginPackageDescriptor,
   PluginPackageMetadata,
   PluginRegistration,
-  RemotePluginManifest,
   PluginRouteContribution,
   PluginValidationOptions,
   PluginVersionRequirement,
+  RemotePluginManifest,
   WorkspacePlugin,
 } from './index';
 import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from './version';
@@ -494,7 +494,10 @@ function validateContributionShapes(records: readonly ValidationRecord[], option
       }
       const ownsRoute = plugin.routes?.some((route) => route.id === slot.routeId);
       const usesHostRoute = Object.hasOwn(options.knownSlots, slot.routeId);
-      if (!ownsRoute && !usesHostRoute) {
+      const ownerModule = slot.ownerModuleId ? plugin.modules?.find((module) => module.id === slot.ownerModuleId) : undefined;
+      // 插槽开在本插件注入别人页面的模块内部：路由归目标插件，插槽仍归自己，靠 ownerModuleId 认证。
+      const insideOwnModule = ownerModule !== undefined && ownerModule.routeId === slot.routeId;
+      if (!ownsRoute && !usesHostRoute && !insideOwnModule) {
         addDiagnostic(
           record,
           createDiagnostic(
@@ -506,7 +509,6 @@ function validateContributionShapes(records: readonly ValidationRecord[], option
         );
       }
       if (slot.ownerModuleId) {
-        const ownerModule = plugin.modules?.find((module) => module.id === slot.ownerModuleId);
         if (!ownerModule) {
           addDiagnostic(
             record,

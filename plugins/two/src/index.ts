@@ -1,5 +1,11 @@
-import { PLUGIN_API_VERSION, type PluginMessagePayload, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
-import { twoContract, type TwoPluginContract } from './contract';
+import {
+  createPluginContributions,
+  PLUGIN_API_VERSION,
+  type PluginMessagePayload,
+  type WorkspacePlugin,
+} from '@tt-plug/plugin-sdk';
+import { oneNestedTarget, twoContract, type TwoPluginContract } from './contract';
+import { contributions } from './contributions';
 
 export { twoContract, type PluginMessagePayload, type TwoPluginContract };
 
@@ -11,22 +17,11 @@ export const plugin: WorkspacePlugin = {
     apiVersion: PLUGIN_API_VERSION,
     description: '演示插件页面、消息接收和扩展插槽。',
     provides: { capabilities: [{ id: 'demo.receive-message', version: '1.0.0' }] },
+    requires: {
+      plugins: [{ id: oneNestedTarget.pluginId, range: '^1.0.0', optional: true }],
+    },
   },
   contract: twoContract,
-  routes: [
-    {
-      id: twoContract.routes.page.routeId,
-      path: twoContract.routes.page.path,
-      permission: 'demo:two:view',
-      menu: { label: '页面插件 two', icon: 'blocks', order: 30 },
-      load: () => import('./TwoPage'),
-    },
-  ],
-  extensionSlots: [
-    {
-      id: twoContract.slots.demo.slotId,
-      routeId: twoContract.slots.demo.routeId,
-      description: '允许其他插件向 two 页面注入演示模块。',
-    },
-  ],
+  // 路由和开放插槽都来自 contributions.tsx 的声明树。
+  ...createPluginContributions(contributions, { pluginId: twoContract.pluginId }),
 };

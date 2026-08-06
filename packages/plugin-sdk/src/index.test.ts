@@ -468,6 +468,57 @@ describe('validatePlugins', () => {
       expect.arrayContaining([expect.objectContaining({ code: 'REQUIRED_CAPABILITY_UNAVAILABLE' })]),
     );
   });
+
+  it('lets a plugin open a slot inside the module it injected into another plugin page', () => {
+    // host 开一个页面并开放插槽，guest 注入模块、并在自己那个模块内部再开一个插槽。
+    const host: WorkspacePlugin = {
+      manifest: { id: 'host', name: 'host', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
+      routes: [{ id: 'host', path: '/host', permission: 'host:view', menu: { label: 'Host', order: 1 }, load }],
+      extensionSlots: [{ id: 'host.demo', routeId: 'host' }],
+    };
+    const guest: WorkspacePlugin = {
+      manifest: { id: 'guest', name: 'guest', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
+      modules: [{ id: 'guest.inner', targetPluginId: 'host', routeId: 'host', slotId: 'host.demo', load }],
+      // routeId 归 host 所有，靠 ownerModuleId 证明这个插槽开在 guest 自己的模块内部。
+      extensionSlots: [{ id: 'guest.nested', routeId: 'host', ownerModuleId: 'guest.inner' }],
+    };
+    // 第三方插件注入到 guest 开在 host 页面上的嵌套插槽。
+    const third: WorkspacePlugin = {
+      manifest: { id: 'third', name: 'third', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
+      modules: [{ id: 'third.nested', targetPluginId: 'guest', routeId: 'host', slotId: 'guest.nested', load }],
+    };
+
+    const registrations = validatePlugins([host, guest, third], options);
+    expect(registrations.map((registration) => registration.status)).toEqual(['ready', 'ready', 'ready']);
+  });
+
+  it('still rejects a foreign route slot without a matching owner module', () => {
+    const host: WorkspacePlugin = {
+      manifest: { id: 'host', name: 'host', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
+      routes: [{ id: 'host', path: '/host', permission: 'host:view', menu: { label: 'Host', order: 1 }, load }],
+      extensionSlots: [{ id: 'host.demo', routeId: 'host' }],
+    };
+    const guest: WorkspacePlugin = {
+      manifest: { id: 'guest', name: 'guest', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
+      modules: [{ id: 'guest.inner', targetPluginId: 'host', routeId: 'host', slotId: 'host.demo', load }],
+      extensionSlots: [{ id: 'guest.nested', routeId: 'host' }],
+    };
+
+    expect(validatePlugins([host, guest], options)[1]?.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'EXTENSION_SLOT_ROUTE_UNKNOWN' })]),
+    );
+  });
+
+  it('rejects a nested slot whose owner module lives on a different route', () => {
+    const guest: WorkspacePlugin = {
+      manifest: { id: 'guest', name: 'guest', version: '1.0.0', apiVersion: PLUGIN_API_VERSION },
+      modules: [{ id: 'guest.inner', routeId: 'dashboard', slotId: 'dashboard.demo', load }],
+      extensionSlots: [{ id: 'guest.nested', routeId: 'elsewhere', ownerModuleId: 'guest.inner' }],
+    };
+
+    const codes = validatePlugins([guest], options)[0]?.diagnostics.map((diagnostic) => diagnostic.code);
+    expect(codes).toEqual(expect.arrayContaining(['EXTENSION_SLOT_ROUTE_UNKNOWN', 'EXTENSION_SLOT_OWNER_ROUTE_MISMATCH']));
+  });
 });
 
 describe('createPluginChannelBus', () => {
