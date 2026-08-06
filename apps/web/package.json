@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @fms/plugin-sdk build && pnpm --filter @fms/plugin-contracts build",
-    "dev": "vite",
+    "predev": "pnpm --filter @tt-plug/plugin-sdk build && pnpm --filter @tt-plug/plugin-contracts build",
+    "dev": "vite --force",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@fms/plugin-contracts": "workspace:*",
+    "@tt-plug/plugin-contracts": "workspace:*",
     "@fms/plugin-one": "workspace:*",
-    "@fms/plugin-sdk": "workspace:*",
+    "@tt-plug/plugin-sdk": "workspace:*",
     "@fms/plugin-two": "workspace:*",
     "@module-federation/runtime": "catalog:",
     "antd": "catalog:",

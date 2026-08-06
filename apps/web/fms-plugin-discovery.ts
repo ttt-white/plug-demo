@@ -1,4 +1,4 @@
-import type { PluginDiagnostic, PluginPackageMetadata } from '@fms/plugin-sdk';
+import type { PluginDiagnostic, PluginPackageMetadata } from '@tt-plug/plugin-sdk';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';

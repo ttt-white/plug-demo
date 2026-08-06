@@ -1,6 +1,6 @@
 import { useAuth } from '@/auth/AuthProvider';
 import { DEMO_MODE } from '@/config/environment';
-import { PluginApiError } from '@fms/plugin-sdk';
+import { PluginApiError } from '@tt-plug/plugin-sdk';
 import { Alert, Button, Card, Form, Input, Segmented, Typography } from 'antd';
 import { LockKeyhole, LogIn, UserRound } from 'lucide-react';
 import { useState } from 'react';

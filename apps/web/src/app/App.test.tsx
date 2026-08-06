@@ -4,7 +4,7 @@ import { server } from '@/mocks/server';
 import { PluginRegistryProvider } from '@/plugins/PluginRegistryProvider';
 import type { RemotePluginConfiguration } from '@/plugins/remote-plugin-catalog';
 import { TOKEN_STORAGE_KEY } from '@/services/api-client';
-import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from '@fms/plugin-sdk';
+import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from '@tt-plug/plugin-sdk';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { ConfigProvider } from 'antd';

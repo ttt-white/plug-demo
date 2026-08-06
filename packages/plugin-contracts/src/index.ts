@@ -5,7 +5,7 @@ import type {
   PluginPublicChannelReference,
   PluginRouteReference,
   PluginSlotReference,
-} from '@fms/plugin-sdk';
+} from '@tt-plug/plugin-sdk';
 import { z } from 'zod';
 
 export const demoStatusSchema = z.object({

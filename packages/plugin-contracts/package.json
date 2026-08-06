@@ -1,21 +1,33 @@
 {
-  "name": "@fms/plugin-contracts",
-  "version": "1.0.0",
+  "name": "@tt-plug/plugin-contracts",
+  "version": "1.0.1",
+  "description": "Shared host and plugin contracts for the FMS workspace.",
   "private": false,
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
-      "development": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tujianglin/plug-demo.git",
+    "directory": "packages/plugin-contracts"
+  },
+  "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-contracts#readme",
+  "bugs": {
+    "url": "https://github.com/tujianglin/plug-demo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --clean --external @fms/plugin-sdk --external zod && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --clean --external @tt-plug/plugin-sdk --external zod && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -23,10 +35,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@fms/plugin-sdk": "workspace:*",
+    "@tt-plug/plugin-sdk": "workspace:*",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@fms/plugin-sdk": "^1.0.0"
+    "@tt-plug/plugin-sdk": "^1.0.0"
   }
 }

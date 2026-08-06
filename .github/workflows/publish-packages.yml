@@ -1,0 +1,63 @@
+name: Publish npm packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Install an OIDC-capable npm CLI
+        run: npm install --global npm@12
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify packages
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm test
+          pnpm build
+
+      - name: Pack packages
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-packages"
+          pnpm --filter @tt-plug/plugin-sdk pack --pack-destination "$RUNNER_TEMP/npm-packages"
+          pnpm --filter @tt-plug/plugin-contracts pack --pack-destination "$RUNNER_TEMP/npm-packages"
+
+      - name: Publish packages
+        shell: bash
+        run: |
+          shopt -s nullglob
+          sdk_tarballs=("$RUNNER_TEMP"/npm-packages/tt-plug-plugin-sdk-*.tgz)
+          contracts_tarballs=("$RUNNER_TEMP"/npm-packages/tt-plug-plugin-contracts-*.tgz)
+
+          if [[ ${#sdk_tarballs[@]} -ne 1 || ${#contracts_tarballs[@]} -ne 1 ]]; then
+            echo "Expected exactly one tarball for each package" >&2
+            exit 1
+          fi
+
+          npm publish "${sdk_tarballs[0]}"
+          npm publish "${contracts_tarballs[0]}"

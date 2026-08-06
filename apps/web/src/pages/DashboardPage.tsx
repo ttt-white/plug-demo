@@ -1,8 +1,8 @@
 import { usePluginRegistry } from '@/plugins/PluginRegistryProvider';
 import { PluginSlot } from '@/plugins/PluginRenderer';
 import { apiClient } from '@/services/api-client';
-import { fmsDataContract, hostContract } from '@fms/plugin-contracts';
-import { usePluginQuery } from '@fms/plugin-sdk';
+import { fmsDataContract, hostContract } from '@tt-plug/plugin-contracts';
+import { usePluginQuery } from '@tt-plug/plugin-sdk';
 import { Button, Typography } from 'antd';
 import { RefreshCw } from 'lucide-react';
 

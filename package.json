@@ -12,14 +12,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "eslint apps packages plugins && oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect apps packages plugins",
-    "external:install": "pnpm --dir ../扩展插件/three install",
-    "external:build": "pnpm --dir ../扩展插件/three build",
-    "external:dev": "pnpm --dir ../扩展插件/three dev",
-    "external:typecheck": "pnpm --dir ../扩展插件/three typecheck",
-    "external:test": "pnpm --dir ../扩展插件/three test",
-    "external:lint": "pnpm --dir ../扩展插件/three lint",
-    "external:sync": "pnpm --filter @fms/plugin-sdk build && pnpm --filter @fms/plugin-contracts build && node scripts/sync-external-vendor.mjs",
-    "external:setup": "pnpm external:install && pnpm external:build",
+    "publish:packages": "gh workflow run publish-packages.yml --ref main",
     "commit": "git add . && lefthook run pre-commit && git add . && czg --no-verify"
   },
   "devDependencies": {

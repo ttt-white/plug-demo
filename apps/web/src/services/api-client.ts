@@ -1,4 +1,4 @@
-import { PluginApiError, type PluginApiClient, type PluginApiRequestOptions } from '@fms/plugin-sdk';
+import { PluginApiError, type PluginApiClient, type PluginApiRequestOptions } from '@tt-plug/plugin-sdk';
 
 export const TOKEN_STORAGE_KEY = 'fms.access-token';
 

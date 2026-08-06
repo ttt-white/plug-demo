@@ -17,8 +17,8 @@ export default defineConfig(({ command }) => {
           'react-dom': { singleton: true, requiredVersion: '^19.0.0' },
           antd: { singleton: true, requiredVersion: '^6.0.0' },
           'lucide-react': { singleton: true, requiredVersion: '^0.468.0' },
-          '@fms/plugin-contracts': { singleton: true, requiredVersion: '^1.0.0' },
-          '@fms/plugin-sdk': { singleton: true, requiredVersion: '^1.0.0' },
+          '@tt-plug/plugin-contracts': { singleton: true, requiredVersion: '^1.0.0' },
+          '@tt-plug/plugin-sdk': { singleton: true, requiredVersion: '^1.0.0' },
         },
         dts: false,
         dev: { remoteHmr: 'full-reload' },
@@ -29,7 +29,7 @@ export default defineConfig(({ command }) => {
     publicDir: command === 'serve' ? 'public' : false,
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
-      dedupe: ['react', 'react-dom', 'antd', '@fms/plugin-contracts', '@fms/plugin-sdk'],
+      dedupe: ['react', 'react-dom', 'antd', '@tt-plug/plugin-contracts', '@tt-plug/plugin-sdk'],
     },
     server: { host: true, port: 3000 },
   };

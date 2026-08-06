@@ -1,4 +1,4 @@
-import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from '@fms/plugin-sdk';
+import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from '@tt-plug/plugin-sdk';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { apiClient, TOKEN_STORAGE_KEY } from '@/services/api-client';
 import type { RemotePluginConfiguration } from '@/plugins/remote-plugin-catalog';

@@ -1,5 +1,5 @@
-import { hostContract } from '@fms/plugin-contracts';
-import type { PluginContributionCatalogHost, PluginRouteContribution } from '@fms/plugin-sdk';
+import { hostContract } from '@tt-plug/plugin-contracts';
+import type { PluginContributionCatalogHost, PluginRouteContribution } from '@tt-plug/plugin-sdk';
 
 export type HostRouteId = 'dashboard' | 'plugins' | 'forbidden';
 

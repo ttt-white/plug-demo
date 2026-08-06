@@ -1,1 +1,1 @@
-export { oneContract, type OnePluginContract } from '@fms/plugin-contracts';
+export { oneContract, type OnePluginContract } from '@tt-plug/plugin-contracts';

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
-      "@fms/plugin-sdk": ["../plugin-sdk/src/index.ts"]
+      "@tt-plug/plugin-sdk": ["../plugin-sdk/src/index.ts"]
     }
   },
   "include": ["src"]

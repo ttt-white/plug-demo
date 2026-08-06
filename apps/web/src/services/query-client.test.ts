@@ -1,4 +1,4 @@
-import { PluginApiError } from '@fms/plugin-sdk';
+import { PluginApiError } from '@tt-plug/plugin-sdk';
 import { describe, expect, it, vi } from 'vitest';
 import { createWorkspaceQueryClient } from './query-client';
 

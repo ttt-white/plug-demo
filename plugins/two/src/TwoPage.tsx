@@ -1,5 +1,5 @@
-import { workspaceContract } from '@fms/plugin-contracts';
-import { type PluginComponentProps } from '@fms/plugin-sdk';
+import { workspaceContract } from '@tt-plug/plugin-contracts';
+import { type PluginComponentProps } from '@tt-plug/plugin-sdk';
 import { Button, Typography } from 'antd';
 import { ArrowRight, Radio } from 'lucide-react';
 import { useEffect, useState } from 'react';

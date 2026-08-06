@@ -1,4 +1,4 @@
-import { PLUGIN_API_VERSION, type RemotePluginManifest, type WorkspacePlugin } from '@fms/plugin-sdk';
+import { PLUGIN_API_VERSION, type RemotePluginManifest, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
 import { describe, expect, it, vi } from 'vitest';
 import type { RemotePluginDefinition } from './remote-plugin-catalog';
 import { discoverRemotePluginConfiguration, inspectRemotePlugin } from './remote-plugin-loader';

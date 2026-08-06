@@ -1,4 +1,4 @@
-import type { PluginRegistration } from '@fms/plugin-sdk';
+import type { PluginRegistration } from '@tt-plug/plugin-sdk';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';

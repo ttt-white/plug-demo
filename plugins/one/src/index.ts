@@ -1,4 +1,4 @@
-import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@fms/plugin-sdk';
+import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
 import { oneContract } from './contract';
 
 export { oneContract, type OnePluginContract } from './contract';

@@ -5,7 +5,7 @@ import {
   type PluginQueryClient,
   type PluginRuntime,
   type WorkspacePlugin,
-} from '@fms/plugin-sdk';
+} from '@tt-plug/plugin-sdk';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act, startTransition } from 'react';

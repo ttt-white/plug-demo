@@ -1,5 +1,5 @@
 import { apiClient, setUnauthorizedHandler, TOKEN_STORAGE_KEY } from '@/services/api-client';
-import type { PluginUser } from '@fms/plugin-sdk';
+import type { PluginUser } from '@tt-plug/plugin-sdk';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 interface LoginInput {

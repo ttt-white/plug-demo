@@ -212,13 +212,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@fms/plugin-contracts':
+      '@tt-plug/plugin-contracts':
         specifier: workspace:*
         version: link:../../packages/plugin-contracts
       '@fms/plugin-one':
         specifier: workspace:*
         version: link:../../plugins/one
-      '@fms/plugin-sdk':
+      '@tt-plug/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
       '@fms/plugin-two':
@@ -277,7 +277,7 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
-      '@fms/plugin-sdk':
+      '@tt-plug/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
       vitest:
@@ -309,10 +309,10 @@ importers:
         specifier: 'catalog:'
         version: 0.468.0(react@19.2.8)
     devDependencies:
-      '@fms/plugin-contracts':
+      '@tt-plug/plugin-contracts':
         specifier: workspace:*
         version: link:../../packages/plugin-contracts
-      '@fms/plugin-sdk':
+      '@tt-plug/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
       '@testing-library/jest-dom':
@@ -343,10 +343,10 @@ importers:
         specifier: 'catalog:'
         version: 0.468.0(react@19.2.8)
     devDependencies:
-      '@fms/plugin-contracts':
+      '@tt-plug/plugin-contracts':
         specifier: workspace:*
         version: link:../../packages/plugin-contracts
-      '@fms/plugin-sdk':
+      '@tt-plug/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
       '@testing-library/jest-dom':

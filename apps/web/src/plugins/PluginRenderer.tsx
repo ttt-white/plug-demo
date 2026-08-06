@@ -1,5 +1,5 @@
 import { FullScreenLoading } from '@/components/FullScreenLoading';
-import type { PluginComponentLoader, PluginComponentProps, PluginSlotReference } from '@fms/plugin-sdk';
+import type { PluginComponentLoader, PluginComponentProps, PluginSlotReference } from '@tt-plug/plugin-sdk';
 import { Button, Result, Space, Spin } from 'antd';
 import { RefreshCw } from 'lucide-react';
 import { Component, Suspense, createElement, lazy, useCallback, useMemo, useState, type ErrorInfo, type ReactNode } from 'react';

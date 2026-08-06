@@ -1,17 +1,30 @@
 {
-  "name": "@fms/plugin-sdk",
-  "version": "1.0.0",
+  "name": "@tt-plug/plugin-sdk",
+  "version": "1.0.1",
+  "description": "Runtime APIs and TypeScript contracts for building FMS workspace plugins.",
   "private": false,
   "files": [
     "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
-      "development": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tujianglin/plug-demo.git",
+    "directory": "packages/plugin-sdk"
+  },
+  "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/tujianglin/plug-demo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --clean --external react && tsc -p tsconfig.build.json",

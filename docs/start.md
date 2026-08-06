@@ -95,7 +95,7 @@ pnpm build
 
 ```bash
 pnpm --filter @fms/web test
-pnpm --filter @fms/plugin-sdk test
+pnpm --filter @tt-plug/plugin-sdk test
 pnpm external:typecheck
 pnpm external:test
 ```

@@ -5,7 +5,7 @@ import {
   type PluginPackageDescriptor,
   type PluginPackageMetadata,
   type RemotePluginManifest,
-} from '@fms/plugin-sdk';
+} from '@tt-plug/plugin-sdk';
 import type { RemotePluginDefinition } from './remote-plugin-catalog';
 import {
   createRemotePluginConfiguration,

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import type { DemoStatus } from '@fms/plugin-contracts';
-import { createPluginChannelBus, type PluginQueryClient, type PluginQueryOptions, type PluginRuntime } from '@fms/plugin-sdk';
+import type { DemoStatus } from '@tt-plug/plugin-contracts';
+import { createPluginChannelBus, type PluginQueryClient, type PluginQueryOptions, type PluginRuntime } from '@tt-plug/plugin-sdk';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

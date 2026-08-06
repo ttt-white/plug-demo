@@ -1,5 +1,5 @@
 import { loadRemote, registerRemotes } from '@module-federation/runtime';
-import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION, type RemotePluginManifest } from '@fms/plugin-sdk';
+import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION, type RemotePluginManifest } from '@tt-plug/plugin-sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRemotePluginConfiguration,

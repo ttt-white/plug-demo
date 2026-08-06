@@ -7,7 +7,7 @@ import {
   type PluginQueryObserver,
   type PluginQueryOptions,
   type PluginQuerySnapshot,
-} from '@fms/plugin-sdk';
+} from '@tt-plug/plugin-sdk';
 
 const DEFAULT_STALE_TIME_MS = 30_000;
 const DEFAULT_TIMEOUT_MS = 10_000;

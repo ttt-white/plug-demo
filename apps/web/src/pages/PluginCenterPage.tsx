@@ -6,7 +6,7 @@ import {
   type PluginContributionCatalog,
   type PluginContributionCatalogOwner,
   type PluginContributionCatalogRoute,
-} from '@fms/plugin-sdk';
+} from '@tt-plug/plugin-sdk';
 import {
   Alert,
   Button,

@@ -1,5 +1,5 @@
 import { loadRemote, registerRemotes } from '@module-federation/runtime';
-import type { RemotePluginManifest, WorkspacePlugin } from '@fms/plugin-sdk';
+import type { RemotePluginManifest, WorkspacePlugin } from '@tt-plug/plugin-sdk';
 
 export interface RemotePluginConfiguration {
   origin: string;

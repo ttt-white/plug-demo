@@ -26,7 +26,7 @@
     }
   },
   "peerDependencies": {
-    "@fms/plugin-sdk": "^1.0.0",
+    "@tt-plug/plugin-sdk": "^1.0.0",
     "react": "^19.0.0"
   },
   "fmsPlugin": {
@@ -37,7 +37,7 @@
 ```
 
 ```ts
-import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@fms/plugin-sdk';
+import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
 
 export const plugin: WorkspacePlugin = {
   manifest: {
@@ -65,7 +65,7 @@ export const plugin: WorkspacePlugin = {
 页面和模块接收 `PluginComponentProps`：
 
 ```tsx
-import type { PluginComponentProps } from '@fms/plugin-sdk';
+import type { PluginComponentProps } from '@tt-plug/plugin-sdk';
 
 export default function DemoPage({ runtime }: PluginComponentProps) {
   return <p>{runtime.user.displayName}</p>;
@@ -170,8 +170,7 @@ runtime.extensions.navigateTo(twoContract.routes.page, {
 
 ## 远程插件
 
-远程服务需要在同一服务基地址下公开 manifest 和 Federation 入口。例如服务基地址为
-`https://plugins.example.com/catalog/demo` 时，至少公开：
+远程服务需要在同一服务基地址下公开 manifest 和 Federation 入口。例如服务基地址为 `https://plugins.example.com/catalog/demo` 时，至少公开：
 
 ```text
 https://plugins.example.com/catalog/demo/fms-plugin.json  健康检查和远程身份
