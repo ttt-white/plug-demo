@@ -1,5 +1,5 @@
-import type { HostRouteReference, HostSlotReference, PluginPublicChannelReference } from '@tt-plug/plugin-sdk';
 import { z } from 'zod';
+import type { HostRouteReference, HostSlotReference, PluginPublicChannelReference } from './index';
 
 export const demoStatusSchema = z.object({
   message: z.string().min(1),

@@ -5,13 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @tt-plug/web dev",
-    "generate:contracts": "node scripts/generate-plugin-contracts.mjs",
     "build": "pnpm -r build && pnpm verify:production",
     "verify:production": "node scripts/assert-production-build.mjs",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "eslint apps packages plugins && oxlint -D react-hooks/rules-of-hooks -D react-hooks/exhaustive-deps -D react-hooks/set-state-in-effect apps packages plugins",
-    "publish:packages": "pnpm --filter @tt-plug/plugin-sdk build && pnpm --filter @tt-plug/plugin-contracts build && pnpm --filter @tt-plug/plugin-sdk publish --no-git-checks && pnpm --filter @tt-plug/plugin-contracts publish --no-git-checks",
+    "publish:packages": "pnpm --filter @tt-plug/plugin-sdk build && pnpm --filter @tt-plug/plugin-sdk publish --no-git-checks",
     "commit": "git add . && lefthook run pre-commit && git add . && czg --no-verify"
   },
   "devDependencies": {

@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @tt-plug/plugin-contracts --external @tt-plug/plugin-sdk --external lucide-react && tsc -p tsconfig.build.json",
+    "build": "tsup src/index.ts --format esm --splitting --clean --external react --external antd --external @tt-plug/plugin-sdk --external lucide-react && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -25,7 +25,6 @@
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
-    "@tt-plug/plugin-contracts": "workspace:*",
     "@tt-plug/plugin-sdk": "workspace:*",
     "@types/react": "catalog:",
     "antd": "catalog:",
@@ -34,7 +33,6 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@tt-plug/plugin-contracts": "^1.0.0",
     "@tt-plug/plugin-sdk": "^1.0.0",
     "antd": "^6.0.0",
     "react": "^19.0.0"

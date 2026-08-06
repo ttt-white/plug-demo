@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { twoContract, workspaceContract } from '@tt-plug/plugin-contracts';
 import {
   createPluginChannelBus,
+  workspaceContract,
   type PluginQueryClient,
   type PluginRouteReference,
   type PluginRuntime,
@@ -12,6 +12,7 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { twoContract } from './contract';
 import TwoPage from './TwoPage';
 
 const query: PluginQueryClient = { observe: vi.fn(), invalidate: vi.fn(), clear: vi.fn() };
@@ -36,6 +37,7 @@ describe('TwoPage', () => {
       user: { id: 'admin', username: 'admin', displayName: '管理员', role: 'admin', permissions: ['*'] },
       can: () => true,
       channel: bus.forPlugin('two'),
+      contracts: { two: twoContract },
       extensions: {
         renderSlot: () => <div>sample 扩展模块</div>,
         routesFor: () => [

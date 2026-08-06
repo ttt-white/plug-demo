@@ -1,5 +1,4 @@
-import type { DemoStatus } from '@tt-plug/plugin-contracts';
-import { parseRemotePluginManifest, type PluginUser } from '@tt-plug/plugin-sdk';
+import { parseRemotePluginManifest, type DemoStatus, type PluginUser } from '@tt-plug/plugin-sdk';
 import { createRemotePluginConfiguration, type RemotePluginConfiguration } from '@/plugins/remote-plugin-catalog';
 
 interface MockAccount {

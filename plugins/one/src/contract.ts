@@ -1,5 +1,4 @@
-import type { HostSlotReference } from '@tt-plug/plugin-sdk';
-import { hostContract } from '../workspace';
+import { hostContract, type HostSlotReference } from '@tt-plug/plugin-sdk';
 
 export interface OnePluginContract {
   readonly pluginId: 'one';
@@ -14,3 +13,10 @@ export const oneContract: OnePluginContract = {
     dashboard: { ...hostContract.routes.dashboard, ...hostContract.slots.dashboard },
   },
 };
+
+// 把契约类型登记进 SDK，其他插件即可通过 runtime.contracts.one 拿到精确类型。
+declare module '@tt-plug/plugin-sdk' {
+  interface WorkspacePluginContracts {
+    one: OnePluginContract;
+  }
+}

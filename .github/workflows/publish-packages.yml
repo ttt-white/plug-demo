@@ -45,19 +45,16 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/npm-packages"
           pnpm --filter @tt-plug/plugin-sdk pack --pack-destination "$RUNNER_TEMP/npm-packages"
-          pnpm --filter @tt-plug/plugin-contracts pack --pack-destination "$RUNNER_TEMP/npm-packages"
 
       - name: Publish packages
         shell: bash
         run: |
           shopt -s nullglob
           sdk_tarballs=("$RUNNER_TEMP"/npm-packages/tt-plug-plugin-sdk-*.tgz)
-          contracts_tarballs=("$RUNNER_TEMP"/npm-packages/tt-plug-plugin-contracts-*.tgz)
 
-          if [[ ${#sdk_tarballs[@]} -ne 1 || ${#contracts_tarballs[@]} -ne 1 ]]; then
-            echo "Expected exactly one tarball for each package" >&2
+          if [[ ${#sdk_tarballs[@]} -ne 1 ]]; then
+            echo "Expected exactly one tarball for the SDK package" >&2
             exit 1
           fi
 
           npm publish "${sdk_tarballs[0]}"
-          npm publish "${contracts_tarballs[0]}"

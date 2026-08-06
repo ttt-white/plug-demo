@@ -5,10 +5,14 @@ import {
   REMOTE_PLUGIN_MANIFEST_VERSION,
   catalogPluginContributions,
   createPluginChannelBus,
+  dataContract,
+  demoStatusSchema,
+  hostContract,
   loadPluginRegistrations,
   parseRemotePluginManifest,
   sortModuleContributions,
   validatePlugins,
+  workspaceContract,
   type PluginChannelReference,
   type PluginComponentProps,
   type PluginPackageDescriptor,
@@ -29,6 +33,25 @@ function createPlugin(id: string): WorkspacePlugin {
     modules: [{ id: `${id}.module`, routeId: 'dashboard', slotId: 'dashboard.demo', load }],
   };
 }
+
+describe('workspace contract', () => {
+  it('exposes typed host routes and slots', () => {
+    expect(hostContract.routes.dashboard.path).toBe('/dashboard');
+    expect(hostContract.slots.dashboard).toEqual({ routeId: 'dashboard', slotId: 'dashboard.demo' });
+    expect(workspaceContract.host).toBe(hostContract);
+  });
+
+  it('keeps the workspace channel free of plugin specific entries', () => {
+    expect(workspaceContract.channels.publicMessage.topic).toBe('workspace:public-message');
+    expect(Object.keys(workspaceContract).sort()).toEqual(['channels', 'host']);
+  });
+
+  it('validates the only shared API payload', () => {
+    expect(demoStatusSchema.safeParse({ message: 'ready', updatedAt: '2026-08-04 10:00' }).success).toBe(true);
+    expect(demoStatusSchema.safeParse({ message: '' }).success).toBe(false);
+    expect(dataContract.status.queryKey).toEqual(['workspace', 'demo-status']);
+  });
+});
 
 describe('remote plugin manifest', () => {
   it('accepts the supported remote transport contract', () => {
@@ -392,6 +415,42 @@ describe('validatePlugins', () => {
     );
     expect(registrations[2]?.diagnostics).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'REQUIRED_PLUGIN_UNAVAILABLE' })]),
+    );
+  });
+
+  it('accepts a contract that matches the plugin contributions', () => {
+    const two = createPlugin('two');
+    two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
+    two.extensionSlots = [{ id: 'two.demo', routeId: 'two' }];
+    two.contract = {
+      pluginId: 'two',
+      routes: { page: { path: '/plugin-two', pluginId: 'two', routeId: 'two' } },
+      slots: { demo: { pluginId: 'two', routeId: 'two', slotId: 'two.demo' } },
+      channels: { message: { pluginId: 'two', topic: 'two:message' } },
+    };
+
+    expect(validatePlugins([two], options)[0]?.status).toBe('ready');
+  });
+
+  it('rejects a contract that disagrees with the manifest or the contributions', () => {
+    const two = createPlugin('two');
+    two.routes = [{ id: 'two', path: '/plugin-two', permission: 'demo:two:view', menu: { label: 'two', order: 1 }, load }];
+    two.contract = {
+      pluginId: 'other',
+      routes: { page: { path: '/typo', pluginId: 'two', routeId: 'two' } },
+      slots: { demo: { pluginId: 'two', routeId: 'two', slotId: 'two.demo' } },
+      channels: { message: { pluginId: 'one', topic: 'one:message' } },
+    };
+
+    const result = validatePlugins([two], options)[0];
+    expect(result?.status).toBe('error');
+    expect(result?.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(
+      expect.arrayContaining([
+        'PLUGIN_CONTRACT_ID_MISMATCH',
+        'PLUGIN_CONTRACT_ROUTE_MISSING',
+        'PLUGIN_CONTRACT_SLOT_MISSING',
+        'PLUGIN_CONTRACT_CHANNEL_FOREIGN',
+      ]),
     );
   });
 

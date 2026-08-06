@@ -5,7 +5,6 @@
     "noEmit": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@tt-plug/plugin-contracts": ["../../packages/plugin-contracts/src/index.ts"],
       "@tt-plug/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
       "@tt-plug/plugin-one": ["../../plugins/one/src/index.ts"],
       "@tt-plug/plugin-two": ["../../plugins/two/src/index.ts"]

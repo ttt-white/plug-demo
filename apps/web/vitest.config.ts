@@ -11,7 +11,7 @@ export default defineConfig({
       '@module-federation/runtime': fileURLToPath(new URL('./src/test/module-federation-runtime.ts', import.meta.url)),
     },
     conditions: ['development'],
-    dedupe: ['react', 'react-dom', 'antd', '@tt-plug/plugin-contracts', '@tt-plug/plugin-sdk'],
+    dedupe: ['react', 'react-dom', 'antd', '@tt-plug/plugin-sdk'],
   },
   test: {
     environment: 'jsdom',

@@ -1,5 +1,4 @@
-import { hostContract } from '@tt-plug/plugin-contracts';
-import type { PluginContributionCatalogHost, PluginRouteContribution } from '@tt-plug/plugin-sdk';
+import { hostContract, type PluginContributionCatalogHost, type PluginRouteContribution } from '@tt-plug/plugin-sdk';
 
 export type HostRouteId = 'dashboard' | 'plugins' | 'forbidden';
 

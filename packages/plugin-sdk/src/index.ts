@@ -5,6 +5,17 @@ import { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from './version';
 export { PLUGIN_API_VERSION, REMOTE_PLUGIN_MANIFEST_VERSION } from './version';
 
 export {
+  dataContract,
+  demoStatusSchema,
+  hostContract,
+  workspaceContract,
+  type DemoStatus,
+  type HostContract,
+  type PluginMessagePayload,
+  type WorkspaceContract,
+} from './workspace';
+
+export {
   serializePluginQueryKey,
   usePluginQuery,
   type PluginQueryClient,
@@ -300,6 +311,8 @@ export interface PluginRuntime {
   can(permission: string): boolean;
   /** 当前插件的消息通道。 */
   channel: PluginChannel;
+  /** 当前所有已启用插件公开的契约；未启用或未声明契约的插件 ID 取到 undefined。 */
+  contracts: PluginContractRegistry;
   /** 跨插件页面和插槽扩展能力。 */
   extensions: PluginExtensionRuntime;
 }
@@ -407,6 +420,47 @@ export interface PluginSlotReference<
   readonly slotId: TSlotId;
 }
 
+/**
+ * 插件对外公开的类型化契约：它的页面、开放插槽、消息通道，以及它要注入的位置。
+ *
+ * 插件在自己的 `src/contract.ts` 里声明，挂到 `WorkspacePlugin.contract` 上，
+ * 宿主会把所有已启用插件的契约汇总后通过 `PluginRuntime.contracts` 下发。
+ *
+ * @typeParam TPluginId 契约所属插件 ID；实现应填写字符串字面量。
+ */
+export interface PluginContract<TPluginId extends string = string> {
+  /** 契约所属插件 ID，必须与 manifest.id 一致。 */
+  readonly pluginId: TPluginId;
+  /** 插件对外公开的页面，附带宿主解析出的 URL。 */
+  readonly routes?: Readonly<Record<string, PluginRouteReference<TPluginId> & { readonly path: string }>>;
+  /** 插件通过 `extensionSlots` 开放给其他插件的插槽。 */
+  readonly slots?: Readonly<Record<string, PluginSlotReference<TPluginId>>>;
+  /** 其他插件可以向本插件发送消息的定向通道。 */
+  readonly channels?: Readonly<Record<string, PluginChannelReference<unknown, TPluginId>>>;
+  /** 本插件要注入的宿主或其他插件的位置。 */
+  readonly targets?: Readonly<Record<string, HostSlotReference | PluginSlotReference>>;
+}
+
+/**
+ * 插件通过 declaration merging 登记自己的契约类型。
+ *
+ * ```ts
+ * declare module '@tt-plug/plugin-sdk' {
+ *   interface WorkspacePluginContracts {
+ *     two: TwoPluginContract;
+ *   }
+ * }
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface WorkspacePluginContracts {}
+
+/** 宿主下发的全量契约表；已登记的插件 ID 得到精确类型，其余退化为 `PluginContract`。 */
+export interface PluginContractRegistry extends Partial<WorkspacePluginContracts> {
+  /** 未登记类型的插件 ID；插件未启用或未声明契约时为 undefined。 */
+  readonly [pluginId: string]: PluginContract | undefined;
+}
+
 /** 插件贡献的整页路由；页面始终挂载在登录后的宿主 Layout 中。 */
 export interface PluginRouteContribution {
   /** 路由贡献 ID，在所有插件路由中唯一。 */
@@ -483,6 +537,8 @@ export interface PluginExtensionSlotContribution {
 export interface WorkspacePlugin {
   /** 插件身份和协议版本。 */
   manifest: PluginManifest;
+  /** 插件公开给其他插件的类型化契约；宿主会汇总后通过 `PluginRuntime.contracts` 下发。 */
+  contract?: PluginContract;
   /** 插件提供的整页路由。 */
   routes?: PluginRouteContribution[];
   /** 插件提供给其他页面的类型化入口。 */

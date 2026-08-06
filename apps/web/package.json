@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @tt-plug/plugin-sdk build && pnpm --filter @tt-plug/plugin-contracts build",
+    "predev": "pnpm --filter @tt-plug/plugin-sdk build",
     "dev": "vite --force",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@module-federation/runtime": "catalog:",
-    "@tt-plug/plugin-contracts": "workspace:*",
     "@tt-plug/plugin-one": "workspace:*",
     "@tt-plug/plugin-sdk": "workspace:*",
     "@tt-plug/plugin-two": "workspace:*",

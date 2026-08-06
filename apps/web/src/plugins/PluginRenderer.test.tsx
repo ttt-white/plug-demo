@@ -38,6 +38,7 @@ const runtime: PluginRuntime = {
   },
   can: () => true,
   channel: createPluginChannelBus().forPlugin('retry-plugin'),
+  contracts: {},
   extensions: {
     renderSlot: (_, fallback) => fallback ?? null,
     routesFor: () => [],

@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 
-import type { DemoStatus } from '@tt-plug/plugin-contracts';
-import { createPluginChannelBus, type PluginQueryClient, type PluginQueryOptions, type PluginRuntime } from '@tt-plug/plugin-sdk';
+import {
+  createPluginChannelBus,
+  type DemoStatus,
+  type PluginQueryClient,
+  type PluginQueryOptions,
+  type PluginRuntime,
+} from '@tt-plug/plugin-sdk';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { oneContract } from './contract';
 import OneModule from './OneModule';
 
 const status: DemoStatus = { message: '共享 API 已就绪', updatedAt: '2026-08-04 10:00' };
@@ -41,6 +47,7 @@ function createRuntime(): PluginRuntime {
     user: { id: 'admin', username: 'admin', displayName: '管理员', role: 'admin', permissions: ['*'] },
     can: () => true,
     channel: bus.forPlugin('one'),
+    contracts: { one: oneContract },
     extensions: { renderSlot: (_, fallback) => fallback ?? null, routesFor: () => [], navigateTo: vi.fn() },
   };
 }

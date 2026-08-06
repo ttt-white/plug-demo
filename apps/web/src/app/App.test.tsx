@@ -177,6 +177,18 @@ describe('workspace flows', () => {
     expect(toggle).not.toBeChecked();
   });
 
+  it('drops a disabled plugin contract from the runtime contract registry', async () => {
+    renderApp('/plugin-sample');
+    const user = await loginAsAdmin();
+    expect(await screen.findByRole('button', { name: '携带参数打开 two' }, { timeout: 3000 })).toBeEnabled();
+
+    await user.click(screen.getByRole('link', { name: '插件中心' }));
+    await user.click(await screen.findByRole('switch', { name: '停用two' }));
+    await user.click(await screen.findByRole('link', { name: '外部插件 sample' }));
+
+    expect(await screen.findByRole('button', { name: '携带参数打开 two' }, { timeout: 3000 })).toBeDisabled();
+  });
+
   it('preserves a requested plugin URL through login', async () => {
     renderApp('/plugin-two?from=test&message=hello#demo');
     await loginAsAdmin();

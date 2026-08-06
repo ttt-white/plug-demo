@@ -62,8 +62,7 @@ five 地址为 [http://localhost:3400](http://localhost:3400)，同一服务同�
 ```text
 主体/
   apps/web/                  基座应用、路由、鉴权和 Mock API
-  packages/plugin-sdk/       插件协议、校验、通道和 query 接口
-  packages/plugin-contracts/ 宿主与本地插件的类型化共享契约
+  packages/plugin-sdk/       插件协议、宿主契约、校验、通道和 query 接口
   plugins/one/               宿主插槽模块插件
   plugins/two/               页面与开放插槽插件
 five/                        可独立运行和发布的远程插件
@@ -78,6 +77,6 @@ pnpm test
 pnpm build
 ```
 
-新增本地插件时，先建 `packages/plugin-contracts/src/plugins/<id>.ts`，再执行 `pnpm generate:contracts` 重新生成契约包的导出。
+新增本地插件时，在插件自己的 `src/contract.ts` 里声明契约并挂到 `plugin.contract` 上；基座会把所有已启用插件的契约通过 `runtime.contracts` 下发。
 
 插件开发与协议示例见 [docs/plugin-development.md](docs/plugin-development.md)，环境和常用流程见 [docs/start.md](docs/start.md)。

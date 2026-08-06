@@ -1,5 +1,4 @@
-import { dataContract, workspaceContract } from '@tt-plug/plugin-contracts';
-import { usePluginQuery, type PluginComponentProps } from '@tt-plug/plugin-sdk';
+import { dataContract, usePluginQuery, workspaceContract, type PluginComponentProps } from '@tt-plug/plugin-sdk';
 import { Button, Typography } from 'antd';
 import { Radio } from 'lucide-react';
 import { useEffect, useState } from 'react';

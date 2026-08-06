@@ -1,5 +1,9 @@
-import type { PluginChannelReference, PluginRouteReference, PluginSlotReference } from '@tt-plug/plugin-sdk';
-import type { PluginMessagePayload } from '../workspace';
+import type {
+  PluginChannelReference,
+  PluginMessagePayload,
+  PluginRouteReference,
+  PluginSlotReference,
+} from '@tt-plug/plugin-sdk';
 
 export interface TwoPluginContract {
   readonly pluginId: 'two';
@@ -26,3 +30,10 @@ export const twoContract: TwoPluginContract = {
     message: { pluginId: 'two', topic: 'two:message' },
   },
 };
+
+// 把契约类型登记进 SDK，其他插件即可通过 runtime.contracts.two 拿到精确类型。
+declare module '@tt-plug/plugin-sdk' {
+  interface WorkspacePluginContracts {
+    two: TwoPluginContract;
+  }
+}

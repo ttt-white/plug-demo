@@ -1,5 +1,5 @@
-import { twoContract, workspaceContract } from '@tt-plug/plugin-contracts';
-import { type PluginComponentProps } from '@tt-plug/plugin-sdk';
+import { workspaceContract, type PluginComponentProps } from '@tt-plug/plugin-sdk';
+import { twoContract } from './contract';
 import { Button, Typography } from 'antd';
 import { ArrowRight, Radio } from 'lucide-react';
 import { useEffect, useState } from 'react';

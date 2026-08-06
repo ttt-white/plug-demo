@@ -1,6 +1,6 @@
 {
   "name": "@tt-plug/plugin-sdk",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": false,
   "description": "Runtime APIs and TypeScript contracts for building plugin material management system plugins.",
   "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-sdk#readme",

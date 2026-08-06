@@ -47,6 +47,35 @@ const routeReferenceSchema = z
     routeId: nonEmptyStructureString,
   })
   .passthrough();
+const slotReferenceSchema = z
+  .object({
+    pluginId: nonEmptyStructureString,
+    routeId: nonEmptyStructureString,
+    slotId: nonEmptyStructureString,
+  })
+  .passthrough();
+const hostSlotReferenceSchema = z
+  .object({
+    routeId: nonEmptyStructureString,
+    slotId: nonEmptyStructureString,
+  })
+  .passthrough();
+const channelReferenceSchema = z
+  .object({
+    pluginId: nonEmptyStructureString,
+    topic: nonEmptyStructureString,
+  })
+  .passthrough();
+// 契约的各段允许插件自行扩展，因此统一 passthrough，只约束引用对象的必要字段。
+const contractSchema = z
+  .object({
+    pluginId: nonEmptyStructureString,
+    routes: z.record(z.string(), routeReferenceSchema.and(z.object({ path: nonEmptyStructureString }))).optional(),
+    slots: z.record(z.string(), slotReferenceSchema).optional(),
+    channels: z.record(z.string(), channelReferenceSchema).optional(),
+    targets: z.record(z.string(), z.union([slotReferenceSchema, hostSlotReferenceSchema])).optional(),
+  })
+  .passthrough();
 const versionRequirementSchema = z
   .object({
     id: nonEmptyStructureString,
@@ -84,6 +113,7 @@ const pluginSchema = z
           .optional(),
       })
       .strict(),
+    contract: contractSchema.optional(),
     routes: z
       .array(
         z
@@ -372,6 +402,66 @@ function validateManifestDependencies(record: ValidationRecord) {
   }
 }
 
+// 契约会通过 PluginRuntime.contracts 下发给所有插件，因此必须和插件自己的贡献保持一致。
+function validateContract(record: ValidationRecord, plugin: WorkspacePlugin) {
+  const contract = plugin.contract;
+  if (!contract) return;
+  if (contract.pluginId !== plugin.manifest.id) {
+    addDiagnostic(
+      record,
+      createDiagnostic(
+        'PLUGIN_CONTRACT_ID_MISMATCH',
+        'contribution',
+        `契约插件 ID ${contract.pluginId} 与 manifest ID ${plugin.manifest.id} 不一致`,
+        'contract.pluginId',
+      ),
+    );
+  }
+  for (const [key, route] of Object.entries(contract.routes ?? {})) {
+    const contributed = plugin.routes?.find((candidate) => candidate.id === route.routeId);
+    if (route.pluginId !== plugin.manifest.id || !contributed || contributed.path !== route.path) {
+      addDiagnostic(
+        record,
+        createDiagnostic(
+          'PLUGIN_CONTRACT_ROUTE_MISSING',
+          'contribution',
+          `契约声明的页面没有对应的路由贡献：${route.pluginId}/${route.routeId} (${route.path})`,
+          `contract.routes.${key}`,
+        ),
+      );
+    }
+  }
+  for (const [key, slot] of Object.entries(contract.slots ?? {})) {
+    const contributed = plugin.extensionSlots?.some(
+      (candidate) => candidate.routeId === slot.routeId && candidate.id === slot.slotId,
+    );
+    if (slot.pluginId !== plugin.manifest.id || !contributed) {
+      addDiagnostic(
+        record,
+        createDiagnostic(
+          'PLUGIN_CONTRACT_SLOT_MISSING',
+          'contribution',
+          `契约声明的插槽没有对应的扩展插槽贡献：${slot.pluginId}/${slot.routeId}/${slot.slotId}`,
+          `contract.slots.${key}`,
+        ),
+      );
+    }
+  }
+  for (const [key, channel] of Object.entries(contract.channels ?? {})) {
+    if (channel.pluginId !== plugin.manifest.id) {
+      addDiagnostic(
+        record,
+        createDiagnostic(
+          'PLUGIN_CONTRACT_CHANNEL_FOREIGN',
+          'contribution',
+          `契约只能声明本插件的通道：${channel.pluginId}/${channel.topic}`,
+          `contract.channels.${key}`,
+        ),
+      );
+    }
+  }
+}
+
 function validateContributionShapes(records: readonly ValidationRecord[], options: PluginValidationOptions) {
   const reservedPaths = new Set(options.reservedPaths);
   const pluginsById = recordsByPluginId(records);
@@ -387,6 +477,7 @@ function validateContributionShapes(records: readonly ValidationRecord[], option
   for (const record of records) {
     const plugin = record.plugin;
     if (!plugin) continue;
+    validateContract(record, plugin);
     const seenExtensionSlots = new Set<string>();
     for (const [index, slot] of (plugin.extensionSlots ?? []).entries()) {
       const path = `extensionSlots.${index}`;

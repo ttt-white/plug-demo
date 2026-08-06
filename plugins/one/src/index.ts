@@ -1,5 +1,5 @@
-import { oneContract, type OnePluginContract } from '@tt-plug/plugin-contracts';
 import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
+import { oneContract, type OnePluginContract } from './contract';
 
 export { oneContract, type OnePluginContract };
 
@@ -11,6 +11,7 @@ export const plugin: WorkspacePlugin = {
     apiVersion: PLUGIN_API_VERSION,
     description: '向宿主工作台注入一个最小模块。',
   },
+  contract: oneContract,
   modules: [
     {
       id: 'one.module',

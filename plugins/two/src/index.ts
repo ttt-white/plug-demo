@@ -1,5 +1,5 @@
-import { twoContract, type PluginMessagePayload, type TwoPluginContract } from '@tt-plug/plugin-contracts';
-import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
+import { PLUGIN_API_VERSION, type PluginMessagePayload, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
+import { twoContract, type TwoPluginContract } from './contract';
 
 export { twoContract, type PluginMessagePayload, type TwoPluginContract };
 
@@ -12,6 +12,7 @@ export const plugin: WorkspacePlugin = {
     description: '演示插件页面、消息接收和扩展插槽。',
     provides: { capabilities: [{ id: 'demo.receive-message', version: '1.0.0' }] },
   },
+  contract: twoContract,
   routes: [
     {
       id: twoContract.routes.page.routeId,

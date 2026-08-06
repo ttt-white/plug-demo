@@ -71,10 +71,9 @@ https://host/plugins/tool/plugin.json
    ```
 
 2. 把它加进 `apps/web/package.json` 的 `dependencies`——基座就是靠这份依赖清单发现本地插件的。
-3. 建 `packages/plugin-contracts/src/plugins/<id>.ts` 声明该插件的类型化契约。
-4. 执行 `pnpm generate:contracts` 重新生成契约包的导出 barrel。
+3. 在插件自己的 `src/contract.ts` 里声明类型化契约，挂到 `plugin.contract` 上，并用 `declare module '@tt-plug/plugin-sdk'` 把类型登记到 `WorkspacePluginContracts`。
 
-第 3 步缺失时生成器会直接报错并指出要创建的文件路径。
+契约与实际贡献不一致（ID 不符、声明了不存在的路由或插槽）时，插件中心会在 contribution 阶段给出 error 级诊断。
 
 ## 验证顺序
 

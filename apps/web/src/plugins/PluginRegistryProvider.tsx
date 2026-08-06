@@ -12,6 +12,7 @@ import { discoverRemotePluginConfiguration, inspectRemotePlugins } from '@/plugi
 import {
   createPluginChannelBus,
   loadPluginRegistrations,
+  type PluginContractRegistry,
   type PluginExtensionRoute,
   type PluginExtensionRuntime,
   type PluginModuleContribution,
@@ -273,6 +274,15 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     [activeRegistrations],
   );
 
+  // 已启用插件公开的契约，下发给每个插件运行时；插件被停用或降级后会自动从表里消失。
+  const contracts = useMemo(
+    () =>
+      Object.fromEntries(
+        activeRegistrations.flatMap(({ plugin }) => (plugin.contract ? [[plugin.manifest.id, plugin.contract] as const] : [])),
+      ) as PluginContractRegistry,
+    [activeRegistrations],
+  );
+
   const value = useMemo<PluginRegistryContextValue>(
     () => ({
       registrations,
@@ -311,6 +321,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
           user,
           can,
           channel: channelBus.forPlugin(pluginId),
+          contracts,
           extensions: {
             renderSlot,
             routesFor(route): PluginExtensionRoute[] {
@@ -397,6 +408,7 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
       applyRemoteConfigurations,
       can,
       channelBus,
+      contracts,
       loading,
       navigate,
       query,

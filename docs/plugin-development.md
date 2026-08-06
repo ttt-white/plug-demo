@@ -64,19 +64,61 @@ export const plugin: WorkspacePlugin = {
 
 ## 契约放在哪里
 
-`@tt-plug/plugin-contracts` **只收录基座仓库 `plugins/` 目录下的插件**。它的入口是一个纯 barrel，不含任何具体插件名，导出清单由 `scripts/generate-plugin-contracts.mjs` 扫描 `plugins/*/package.json` 的 `plugin.id` 生成。
+**每个插件自带契约**：在自己的 `src/contract.ts` 里声明，挂到 `plugin.contract` 上，并用 declaration merging 把类型登记进 SDK。没有中心化的契约包，也不需要代码生成器。
 
-```text
-packages/plugin-contracts/src/
-  index.ts            纯 barrel
-  workspace.ts        宿主与工作区级契约（非插件专属）
-  plugins/index.ts    生成产物，勿手改
-  plugins/<id>.ts     单个本地插件的契约
+```ts
+// plugins/two/src/contract.ts
+import type {
+  PluginChannelReference,
+  PluginMessagePayload,
+  PluginRouteReference,
+  PluginSlotReference,
+} from '@tt-plug/plugin-sdk';
+
+export interface TwoPluginContract {
+  readonly pluginId: 'two';
+  readonly routes: { readonly page: PluginRouteReference<'two', 'two'> & { readonly path: '/plugin-two' } };
+  readonly slots: { readonly demo: PluginSlotReference<'two', 'two', 'two.demo'> };
+  readonly channels: { readonly message: PluginChannelReference<PluginMessagePayload, 'two', 'two:message'> };
+}
+
+export const twoContract: TwoPluginContract = {/* ... */};
+
+// 登记后，其他插件的 runtime.contracts.two 就有精确类型
+declare module '@tt-plug/plugin-sdk' {
+  interface WorkspacePluginContracts {
+    two: TwoPluginContract;
+  }
+}
 ```
 
-新增本地插件：建 `src/plugins/<id>.ts` → 跑 `pnpm generate:contracts`。漏建文件时生成器会直接报错。
+宿主级契约（`hostContract` 的页面与插槽、`workspaceContract.channels`、`dataContract`）由 `@tt-plug/plugin-sdk` 直接导出，本地插件和第三方插件取用方式相同。
 
-独立仓库的第三方插件**不进这个包**，在自己的 `src/contract.ts` 里声明本地契约，只从包里取跨插件协作真正需要的部分（例如注入 `two` 插槽时取 `twoContract`）。
+基座在注册时会校验契约与贡献是否一致：契约 `pluginId` 与 manifest 不符、声明了不存在的路由或插槽、声明了别人的通道，都会产生 contribution 阶段的 error 级诊断。
+
+### 用别人的契约
+
+- **自己的契约**：直接 `import { twoContract } from './contract'`，永远存在、类型最准。
+- **别人的契约**：在组件里用 `runtime.contracts.<pluginId>`，值由基座按当前**已启用**插件下发，插件停用或离线时为 `undefined`。
+
+```tsx
+const twoPage = runtime.contracts.two?.routes.page;
+if (twoPage) runtime.extensions.navigateTo(twoPage, { search: { from: runtime.pluginId } });
+```
+
+要拿到 `runtime.contracts.two` 的精确类型，需要让目标插件的类型登记进入你的 TS 程序，即 `import type {} from '@tt-plug/plugin-two'`（运行时会被擦除）。拿不到对方类型时用 `runtime.contracts['two']`，退化为 `PluginContract | undefined`。
+
+manifest 是静态结构，拿不到运行时的 `runtime.contracts`。跨插件注入插槽时在本地声明目标：
+
+```ts
+const twoTarget = { pluginId: 'two', routeId: 'two', slotId: 'two.demo' } as const satisfies PluginSlotReference<
+  'two',
+  'two',
+  'two.demo'
+>;
+```
+
+写错的目标不会静默失败：基座在 contribution 阶段会报 `MODULE_TARGET_PLUGIN_INVALID` 或 `MODULE_TARGET_SLOT_MISSING`。
 
 ## Runtime
 
@@ -99,6 +141,7 @@ export default function DemoPage({ runtime }: PluginComponentProps) {
 | `api`          | 自动使用宿主认证的 HTTP 客户端 |
 | `query`        | 宿主级共享查询缓存             |
 | `channel`      | 类型化定向消息与公共广播       |
+| `contracts`    | 所有已启用插件公开的契约       |
 | `extensions`   | 插槽渲染、页面入口和类型化导航 |
 
 共享 query 示例：
