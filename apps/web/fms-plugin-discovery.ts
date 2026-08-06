@@ -12,7 +12,7 @@ interface PackageJson {
   fmsPlugin?: unknown;
 }
 
-export interface DiscoveredFmsPlugin {
+interface DiscoveredFmsPlugin {
   packageName: string;
   packageJsonPath: string;
   metadata: PluginPackageMetadata;

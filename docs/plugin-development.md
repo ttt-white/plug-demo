@@ -10,13 +10,13 @@
 - `routeLinks`：在目标插件页面增加指向既有真实路由的入口。
 - `manifest.requires/provides`：声明插件与能力依赖。
 
-本地插件由宿主从 Web 应用的直接依赖中读取 `package.json.fmsPlugin`。远程插件由宿主先读取服务端 `fms-plugin.json`，再通过 Module Federation 加载。两类插件都会经过 SDK 的 manifest、路由、插槽和依赖校验；无效插件不会参与运行时解析，诊断会显示在插件中心。
+本地插件由宿主从 Web 应用的直接依赖中读取插件元数据。远程插件由宿主先读取服务端插件 manifest，再通过 Module Federation 加载。两类插件都会经过 SDK 的 manifest、路由、插槽和依赖校验；无效插件不会参与运行时解析，诊断会显示在插件中心。
 
 ## 最小包
 
 ```json
 {
-  "name": "@vendor/fms-plugin-demo",
+  "name": "@vendor/plugin-demo",
   "version": "1.0.0",
   "type": "module",
   "exports": {
@@ -35,6 +35,8 @@
   }
 }
 ```
+
+`fmsPlugin` 是宿主的本地插件发现元数据，可选的 `style` 字段用于声明样式入口。
 
 ```ts
 import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
@@ -174,7 +176,7 @@ runtime.extensions.navigateTo(twoContract.routes.page, {
 
 ```text
 https://plugins.example.com/catalog/demo/fms-plugin.json  健康检查和远程身份
-https://plugins.example.com/catalog/demo/remoteEntry.js   Module Federation 入口
+https://plugins.example.com/catalog/demo/remoteEntry.js  Module Federation 入口
 ```
 
 manifest 示例：
@@ -211,4 +213,4 @@ pnpm build
 
 远程构建应同时包含 `fms-plugin.json`、Federation 入口和样式产物。部署在不同域名或端口时，manifest、入口脚本及其动态资源都需要返回允许宿主来源访问的 CORS 响应头。
 
-共享 SDK 或 contracts 变更后，在主体根目录执行 `pnpm external:sync`，可构建并同步 three 的 `vendor/` 开发快照。`FMS_EXTERNAL_PLUGIN_ROOT` 可用于指定其他外部插件目录。
+共享 SDK 或 contracts 变更后，发布新的 npm 版本；外部插件通过正常的 semver 依赖升级，不与主体目录建立文件同步关系。

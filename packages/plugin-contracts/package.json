@@ -1,8 +1,17 @@
 {
   "name": "@tt-plug/plugin-contracts",
   "version": "1.0.1",
-  "description": "Shared host and plugin contracts for the FMS workspace.",
   "private": false,
+  "description": "Shared host and plugin contracts for the plugin material management system.",
+  "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-contracts#readme",
+  "bugs": {
+    "url": "https://github.com/tujianglin/plug-demo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tujianglin/plug-demo.git",
+    "directory": "packages/plugin-contracts"
+  },
   "files": [
     "dist"
   ],
@@ -13,15 +22,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tujianglin/plug-demo.git",
-    "directory": "packages/plugin-contracts"
-  },
-  "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-contracts#readme",
-  "bugs": {
-    "url": "https://github.com/tujianglin/plug-demo/issues"
   },
   "publishConfig": {
     "access": "public"

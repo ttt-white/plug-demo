@@ -31,42 +31,42 @@ describe('discoverFmsPlugins', () => {
     writeJson(join(webRoot, 'package.json'), {
       dependencies: {
         regular: '1.0.0',
-        '@fms/plugin-ready': '1.0.0',
-        '@fms/plugin-future': '2.0.0',
-        '@fms/plugin-malformed': '1.0.0',
+        '@tt-plug/plugin-ready': '1.0.0',
+        '@tt-plug/plugin-future': '2.0.0',
+        '@tt-plug/plugin-malformed': '1.0.0',
       },
     });
     writeDependency(webRoot, 'regular', { name: 'regular', version: '1.0.0' });
-    writeDependency(webRoot, '@fms/plugin-ready', {
-      name: '@fms/plugin-ready',
+    writeDependency(webRoot, '@tt-plug/plugin-ready', {
+      name: '@tt-plug/plugin-ready',
       version: '1.0.0',
       fmsPlugin: { id: 'ready', apiVersion: 1, style: './styles.css' },
     });
-    writeDependency(webRoot, '@fms/plugin-future', {
-      name: '@fms/plugin-future',
+    writeDependency(webRoot, '@tt-plug/plugin-future', {
+      name: '@tt-plug/plugin-future',
       version: '2.0.0',
       fmsPlugin: { id: 'future', apiVersion: 2 },
     });
-    writeDependency(webRoot, '@fms/plugin-malformed', {
-      name: '@fms/plugin-malformed',
+    writeDependency(webRoot, '@tt-plug/plugin-malformed', {
+      name: '@tt-plug/plugin-malformed',
       version: '1.0.0',
       fmsPlugin: true,
     });
 
     const plugins = discoverFmsPlugins(webRoot);
     expect(plugins.map((plugin) => plugin.packageName)).toEqual([
-      '@fms/plugin-future',
-      '@fms/plugin-malformed',
-      '@fms/plugin-ready',
+      '@tt-plug/plugin-future',
+      '@tt-plug/plugin-malformed',
+      '@tt-plug/plugin-ready',
     ]);
     expect(plugins[0]?.metadata).toMatchObject({ declaredPluginId: 'future', declaredApiVersion: 2 });
     expect(plugins[1]?.diagnostics).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'PACKAGE_PLUGIN_METADATA_INVALID', stage: 'discovery' })]),
     );
     expect(plugins[2]).toMatchObject({
-      style: '@fms/plugin-ready/styles.css',
+      style: '@tt-plug/plugin-ready/styles.css',
       metadata: {
-        packageName: '@fms/plugin-ready',
+        packageName: '@tt-plug/plugin-ready',
         packageVersion: '1.0.0',
         declaredPluginId: 'ready',
         declaredApiVersion: 1,
@@ -77,23 +77,23 @@ describe('discoverFmsPlugins', () => {
   it('renders isolated dynamic loaders instead of eager named imports', () => {
     const source = renderInstalledPluginsModule([
       {
-        packageName: '@fms/plugin-ready',
+        packageName: '@tt-plug/plugin-ready',
         packageJsonPath: '/tmp/plugin-ready/package.json',
         metadata: {
-          packageName: '@fms/plugin-ready',
+          packageName: '@tt-plug/plugin-ready',
           packageVersion: '1.0.0',
           declaredPluginId: 'ready',
           declaredApiVersion: 1,
-          style: '@fms/plugin-ready/styles.css',
+          style: '@tt-plug/plugin-ready/styles.css',
         },
         diagnostics: [],
-        style: '@fms/plugin-ready/styles.css',
+        style: '@tt-plug/plugin-ready/styles.css',
       },
     ]);
 
     expect(source).toContain('export const installedPluginDescriptors');
-    expect(source).toContain('import("@fms/plugin-ready")');
-    expect(source).toContain('import("@fms/plugin-ready/styles.css")');
+    expect(source).toContain('import("@tt-plug/plugin-ready")');
+    expect(source).toContain('import("@tt-plug/plugin-ready/styles.css")');
     expect(source).toContain('.then(([module]) => module.plugin)');
     expect(source).not.toContain('import { plugin');
   });

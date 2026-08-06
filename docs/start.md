@@ -32,10 +32,7 @@ pnpm install
 ## 开发命令
 
 ```bash
-pnpm dev          # 仅主体，http://localhost:3000
-pnpm dev:host     # 同上
-pnpm dev:all      # 主体 + three 远程服务
-pnpm external:dev # 仅 three 远程服务
+pnpm dev # 仅主体，http://localhost:3000
 ```
 
 推荐分别启动，以便验证健康检查：
@@ -59,7 +56,7 @@ https://host/plugins/tool
 https://host/plugins/tool/fms-plugin.json
 ```
 
-宿主会读取该地址下的 `fms-plugin.json`，并从 manifest 中取得插件 ID、版本、Federation 容器名、入口文件和暴露模块。插件 ID、服务地址和 Federation 容器名不能与现有配置重复。
+宿主会读取该地址下的 `fms-plugin.json`，并取得插件 ID、版本、Federation 容器名、入口文件和暴露模块。插件 ID、服务地址和 Federation 容器名不能与现有配置重复。
 
 远程插件列表中的铅笔按钮用于修改地址；新地址必须返回同一个插件 ID。删除按钮会删除远程配置，并同步移除菜单、路由、插槽贡献和启停状态。顶部“刷新”会重新读取保存的远程配置、启停状态和当前健康状态。
 
@@ -94,17 +91,15 @@ pnpm build
 也可缩小范围：
 
 ```bash
-pnpm --filter @fms/web test
+pnpm --dir apps/web test
 pnpm --filter @tt-plug/plugin-sdk test
-pnpm external:typecheck
-pnpm external:test
 ```
 
 ## 常见问题
 
 主体没有 three 菜单：
 
-- 打开 `http://localhost:3100/fms-plugin.json`，确认服务可达。
+- 打开 `http://localhost:3100/fms-plugin.json`，确认插件 manifest 可读取。
 - 打开 `http://localhost:3100/remoteEntry.js`，确认 Federation 入口可达。
 - 在插件中心确认已经导入 three 且保存地址正确。
 - 使用管理员账号查看插件中心的注册诊断。
@@ -113,11 +108,6 @@ pnpm external:test
 
 - 这是预期行为。插件配置与服务健康状态相互独立，服务停止时保留配置并显示“离线”。
 - 要彻底移除记录及其贡献，请在插件中心删除 three。
-
-`pnpm dev:all` 找不到 three：
-
-- 默认目录是 `../扩展插件/three`。
-- 其他布局可设置 `FMS_EXTERNAL_PLUGIN_ROOT=/absolute/path/to/three`。
 
 端口被占用：
 

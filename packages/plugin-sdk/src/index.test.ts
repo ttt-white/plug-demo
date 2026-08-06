@@ -276,7 +276,7 @@ describe('validatePlugins', () => {
       [
         {
           metadata: {
-            packageName: '@fms/plugin-identity',
+            packageName: '@tt-plug/plugin-identity',
             packageVersion: '2.0.0',
             declaredPluginId: 'other-id',
             declaredApiVersion: PLUGIN_API_VERSION,
@@ -287,7 +287,7 @@ describe('validatePlugins', () => {
       options,
     );
 
-    expect(registrations[0]).toMatchObject({ status: 'error', source: { packageName: '@fms/plugin-identity' } });
+    expect(registrations[0]).toMatchObject({ status: 'error', source: { packageName: '@tt-plug/plugin-identity' } });
     expect(registrations[0]?.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(
       expect.arrayContaining(['PACKAGE_PLUGIN_ID_MISMATCH', 'PACKAGE_VERSION_MISMATCH']),
     );
@@ -299,7 +299,7 @@ describe('validatePlugins', () => {
     const descriptors: PluginPackageDescriptor[] = [
       {
         metadata: {
-          packageName: '@fms/plugin-ready',
+          packageName: '@tt-plug/plugin-ready',
           packageVersion: '1.0.0',
           declaredPluginId: 'ready',
           declaredApiVersion: PLUGIN_API_VERSION,
@@ -308,7 +308,7 @@ describe('validatePlugins', () => {
       },
       {
         metadata: {
-          packageName: '@fms/plugin-broken',
+          packageName: '@tt-plug/plugin-broken',
           packageVersion: '1.0.0',
           declaredPluginId: 'broken',
           declaredApiVersion: PLUGIN_API_VERSION,
@@ -319,7 +319,7 @@ describe('validatePlugins', () => {
       },
       {
         metadata: {
-          packageName: '@fms/plugin-missing-export',
+          packageName: '@tt-plug/plugin-missing-export',
           packageVersion: '1.0.0',
           declaredPluginId: 'missing-export',
           declaredApiVersion: PLUGIN_API_VERSION,
@@ -328,7 +328,7 @@ describe('validatePlugins', () => {
       },
       {
         metadata: {
-          packageName: '@fms/plugin-future',
+          packageName: '@tt-plug/plugin-future',
           packageVersion: '1.0.0',
           declaredPluginId: 'future',
           declaredApiVersion: 2,

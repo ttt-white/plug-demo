@@ -7,13 +7,4 @@ export default {
   semi: true,
   singleQuote: true,
   trailingComma: 'all',
-  overrides: [
-    {
-      files: ['*.json5'],
-      options: {
-        quoteProps: 'preserve',
-        singleQuote: false,
-      },
-    },
-  ],
 };

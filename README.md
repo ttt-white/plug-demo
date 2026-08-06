@@ -1,6 +1,6 @@
-# FMS Plugin Workspace
+# 插件物料管理系统
 
-一个精简的 React 插件基座。仓库只保留插件系统本身需要的能力：自动发现、协议校验、鉴权、启停、页面路由、宿主插槽、插件插槽、插件间导航、定向消息、公共广播和共享查询。
+一个基于 React 的插件物料管理系统，用于统一管理插件的发现、导入、校验、启停、健康状态和运行时加载。系统同时提供页面路由、宿主插槽、插件插槽、插件间导航、定向消息、公共广播和共享查询等基础能力。
 
 ## 运行
 
@@ -21,11 +21,9 @@ pnpm install
 pnpm dev
 ```
 
-three 地址为 [http://localhost:3100](http://localhost:3100)，同一服务同时提供 standalone 页面、`fms-plugin.json` 和 `remoteEntry.js`。启动后使用管理员账号在“插件中心”导入 `http://localhost:3100`。主体不会预置远程插件；管理员可以导入任意远程服务，也可以修改地址或删除已有配置。服务地址支持根路径（如 `https://host/plugins/tool`）或完整 manifest 地址（如 `https://host/plugins/tool/fms-plugin.json`）。
+three 地址为 [http://localhost:3100](http://localhost:3100)，同一服务同时提供 standalone 页面、插件 manifest 和 `remoteEntry.js`。启动后使用管理员账号在“插件中心”导入 `http://localhost:3100`。主体不会预置远程插件；管理员可以导入任意远程服务，也可以修改地址或删除已有配置。服务地址支持根路径或完整的插件 manifest 地址。
 
 主体每 5 秒检查一次各远程插件的 manifest，仅在服务健康且注册校验通过时加载 Module Federation 模块。关闭远程服务后，配置仍保留并显示为“离线”，但菜单、路由和插槽模块会自动移除；恢复服务后会自动重新注册。只有在插件中心删除远程配置后，该插件记录才会消失。
-
-也可以在主体目录执行 `pnpm dev:all` 同时启动两个工程。
 
 演示账号：
 
@@ -52,7 +50,7 @@ three 地址为 [http://localhost:3100](http://localhost:3100)，同一服务同
 主体/
   apps/web/                 宿主应用、路由、鉴权和 Mock API
   packages/plugin-sdk/      插件协议、校验、通道和 query 接口
-  packages/plugin-contracts/one/two/three 的类型化共享契约
+  packages/plugin-contracts/ one/two/three 的类型化共享契约
   plugins/one/              宿主插槽模块插件
   plugins/two/              页面与开放插槽插件
 扩展插件/three/             可独立运行和发布的外部插件

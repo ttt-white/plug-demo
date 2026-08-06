@@ -1,6 +1,6 @@
 # @tt-plug/plugin-contracts
 
-Shared host routes, slots, channels, and data contracts for the FMS workspace.
+Shared host routes, slots, channels, and data contracts for the plugin material management system.
 
 ## Install
 

@@ -26,24 +26,22 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useNavigate } from 'react-router-dom';
 import { installedPluginDescriptors } from 'virtual:fms-installed-plugins';
 
-export { HOST_ROUTES, HOST_SLOTS } from '@/app/route-catalog';
-
 export interface ResolvedRoute {
   plugin: WorkspacePlugin;
   contribution: PluginRouteContribution;
 }
 
-export interface ResolvedModule {
+interface ResolvedModule {
   plugin: WorkspacePlugin;
   contribution: PluginModuleContribution;
 }
 
-export interface PluginState {
+interface PluginState {
   id: string;
   enabled: boolean;
 }
 
-export type PluginStatesState =
+type PluginStatesState =
   | { status: 'idle'; states: PluginState[]; error: null }
   | { status: 'loading'; states: PluginState[]; error: null }
   | { status: 'ready'; states: PluginState[]; error: null }

@@ -1,5 +1,5 @@
 {
-  "name": "@fms/plugin-two",
+  "name": "@tt-plug/plugin-two",
   "version": "1.0.0",
   "private": false,
   "files": [
@@ -23,10 +23,10 @@
     "lucide-react": "catalog:"
   },
   "devDependencies": {
-    "@tt-plug/plugin-contracts": "workspace:*",
-    "@tt-plug/plugin-sdk": "workspace:*",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
+    "@tt-plug/plugin-contracts": "workspace:*",
+    "@tt-plug/plugin-sdk": "workspace:*",
     "@types/react": "catalog:",
     "antd": "catalog:",
     "jsdom": "catalog:",

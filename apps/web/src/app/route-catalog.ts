@@ -3,7 +3,7 @@ import type { PluginContributionCatalogHost, PluginRouteContribution } from '@tt
 
 export type HostRouteId = 'dashboard' | 'plugins' | 'forbidden';
 
-export interface HostRouteDefinition {
+interface HostRouteDefinition {
   id: HostRouteId;
   path: string;
   permission: string | null;

@@ -1,10 +1,9 @@
-import { workspaceContract } from '@tt-plug/plugin-contracts';
+import { twoContract, workspaceContract } from '@tt-plug/plugin-contracts';
 import { type PluginComponentProps } from '@tt-plug/plugin-sdk';
 import { Button, Typography } from 'antd';
 import { ArrowRight, Radio } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { twoContract } from './contract';
 
 export default function TwoPage({ runtime }: PluginComponentProps) {
   const [searchParams] = useSearchParams();

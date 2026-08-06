@@ -1,6 +1,6 @@
 # @tt-plug/plugin-sdk
 
-Runtime APIs and TypeScript contracts for plugins running in the FMS workspace.
+Runtime APIs and TypeScript contracts for plugins running in the plugin material management system.
 
 ## Install
 

@@ -1,8 +1,17 @@
 {
   "name": "@tt-plug/plugin-sdk",
   "version": "1.0.1",
-  "description": "Runtime APIs and TypeScript contracts for building FMS workspace plugins.",
   "private": false,
+  "description": "Runtime APIs and TypeScript contracts for building plugin material management system plugins.",
+  "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/tujianglin/plug-demo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tujianglin/plug-demo.git",
+    "directory": "packages/plugin-sdk"
+  },
   "files": [
     "dist"
   ],
@@ -13,15 +22,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tujianglin/plug-demo.git",
-    "directory": "packages/plugin-sdk"
-  },
-  "homepage": "https://github.com/tujianglin/plug-demo/tree/main/packages/plugin-sdk#readme",
-  "bugs": {
-    "url": "https://github.com/tujianglin/plug-demo/issues"
   },
   "publishConfig": {
     "access": "public"

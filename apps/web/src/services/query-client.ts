@@ -95,7 +95,7 @@ function waitForRetry(delayMs: number, activeRequest: ActiveRequest<unknown>) {
   });
 }
 
-export class WorkspaceQueryClient implements PluginQueryClient {
+class WorkspaceQueryClient implements PluginQueryClient {
   private readonly entries = new Map<string, QueryEntry<unknown>>();
   private readonly ownerId: PluginQueryKeyPart;
 

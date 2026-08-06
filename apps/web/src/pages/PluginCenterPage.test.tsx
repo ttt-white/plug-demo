@@ -69,7 +69,7 @@ describe('PluginCenterPage diagnostics', () => {
     useAuthMock.mockReturnValue({ can: () => true });
     const registration: PluginRegistration = {
       source: {
-        packageName: '@fms/plugin-broken',
+        packageName: '@tt-plug/plugin-broken',
         packageVersion: '1.2.3',
         declaredPluginId: 'broken',
         declaredApiVersion: 1,
@@ -107,7 +107,7 @@ describe('PluginCenterPage diagnostics', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('@fms/plugin-broken')).toBeInTheDocument();
+    expect(screen.getByText('@tt-plug/plugin-broken')).toBeInTheDocument();
     expect(screen.getByText('[load/PLUGIN_LOAD_FAILED] 插件包加载失败：top-level failed')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '停用broken' })).toBeDisabled();
   });
@@ -228,7 +228,7 @@ describe('PluginCenterPage diagnostics', () => {
     const load = vi.fn();
     const topologyRegistrations: PluginRegistration[] = [
       {
-        source: { packageName: '@fms/plugin-one', packageVersion: '1.0.0' },
+        source: { packageName: '@tt-plug/plugin-one', packageVersion: '1.0.0' },
         plugin: {
           manifest: { id: 'one', name: 'one', version: '1.0.0', apiVersion: 1 },
           modules: [{ id: 'one.module', routeId: 'dashboard', slotId: 'dashboard.demo', priority: 100, load }],
@@ -238,7 +238,7 @@ describe('PluginCenterPage diagnostics', () => {
         errors: [],
       },
       {
-        source: { packageName: '@fms/plugin-two', packageVersion: '1.0.0' },
+        source: { packageName: '@tt-plug/plugin-two', packageVersion: '1.0.0' },
         plugin: {
           manifest: { id: 'two', name: 'two', version: '1.0.0', apiVersion: 1 },
           routes: [

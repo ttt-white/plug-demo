@@ -7,8 +7,8 @@
       "@/*": ["./src/*"],
       "@tt-plug/plugin-contracts": ["../../packages/plugin-contracts/src/index.ts"],
       "@tt-plug/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
-      "@fms/plugin-one": ["../../plugins/one/src/index.ts"],
-      "@fms/plugin-two": ["../../plugins/two/src/index.ts"]
+      "@tt-plug/plugin-one": ["../../plugins/one/src/index.ts"],
+      "@tt-plug/plugin-two": ["../../plugins/two/src/index.ts"]
     }
   },
   "include": ["src", "fms-plugin-discovery*.ts", "vite.config.ts", "vitest.config.ts"]

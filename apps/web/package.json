@@ -1,5 +1,5 @@
 {
-  "name": "@fms/web",
+  "name": "@tt-plug/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,11 +11,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tt-plug/plugin-contracts": "workspace:*",
-    "@fms/plugin-one": "workspace:*",
-    "@tt-plug/plugin-sdk": "workspace:*",
-    "@fms/plugin-two": "workspace:*",
     "@module-federation/runtime": "catalog:",
+    "@tt-plug/plugin-contracts": "workspace:*",
+    "@tt-plug/plugin-one": "workspace:*",
+    "@tt-plug/plugin-sdk": "workspace:*",
+    "@tt-plug/plugin-two": "workspace:*",
     "antd": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",

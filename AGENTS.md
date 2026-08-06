@@ -2,15 +2,14 @@
 
 ## 项目结构与模块组织
 
-本仓库是基于 React、TypeScript 和 pnpm workspace 的前端插件基座。
+本仓库是基于 React、TypeScript 和 pnpm workspace 的插件物料管理系统。
 
 - `apps/web/`：Vite 宿主应用，包含路由、鉴权、Mock Service Worker 和应用级测试。
 - `packages/plugin-sdk/`：插件协议、类型、校验与排序逻辑。
 - `packages/plugin-contracts/`：one、two、three 的共享配置与工作区公共通道契约。
 - `plugins/one/`：工作台插槽模块插件示例。
 - `plugins/two/`：履约报表整页插件与公共契约示例。
-- `external/three/`：承运商评级外部插件和跨插件扩展示例，不属于根 workspace。
-- `public/`：根目录静态资源；Web 应用专用资源位于 `apps/web/public/`。
+- `apps/web/public/`：宿主开发环境所需的静态资源。
 
 测试文件与被测代码就近放置，命名为 `*.test.ts` 或 `*.test.tsx`。第三方依赖版本统一维护在 `pnpm-workspace.yaml` 的 `catalog` 中，内部包使用 `workspace:*`。
 
@@ -24,7 +23,7 @@
 - `pnpm typecheck`：执行全仓 TypeScript 类型检查。
 - `pnpm lint`：通过 ESLint 和 Oxlint 检查代码。
 - `pnpm test`：单次运行全部 Vitest 测试。
-- `pnpm --filter @fms/web test`：仅运行宿主应用测试。
+- `pnpm --dir apps/web test`：仅运行宿主应用测试。
 
 提交前应执行 `pnpm typecheck`、`pnpm lint`、`pnpm test` 和 `pnpm build`。
 

@@ -1,7 +1,7 @@
+import { oneContract, type OnePluginContract } from '@tt-plug/plugin-contracts';
 import { PLUGIN_API_VERSION, type WorkspacePlugin } from '@tt-plug/plugin-sdk';
-import { oneContract } from './contract';
 
-export { oneContract, type OnePluginContract } from './contract';
+export { oneContract, type OnePluginContract };
 
 export const plugin: WorkspacePlugin = {
   manifest: {
@@ -22,5 +22,3 @@ export const plugin: WorkspacePlugin = {
     },
   ],
 };
-
-export default plugin;

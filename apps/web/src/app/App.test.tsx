@@ -71,8 +71,8 @@ describe('workspace flows', () => {
     await loginAsAdmin();
 
     expect(await screen.findByRole('heading', { name: '插件中心' })).toBeInTheDocument();
-    expect(screen.getByText('@fms/plugin-one')).toBeInTheDocument();
-    expect(screen.getByText('@fms/plugin-two')).toBeInTheDocument();
+    expect(screen.getByText('@tt-plug/plugin-one')).toBeInTheDocument();
+    expect(screen.getByText('@tt-plug/plugin-two')).toBeInTheDocument();
     expect(screen.queryByText('remote:three')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '外部插件 three' })).not.toBeInTheDocument();
   });
